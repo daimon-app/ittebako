@@ -220,12 +220,10 @@ html, body {
 }
 
 /* ════════════════════════════════════════
-   ⑤ TOMORROW（一手） SCREEN — iframe合体
+   ⑤ TOMORROW（一手） SCREEN — 完全移植
 ════════════════════════════════════════ */
 #screen-tomorrow {
   background: #0a0a0a;
-  height: 100vh;
-  overflow: hidden;
 }
 
 
@@ -1448,8 +1446,363 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
 
 /* ── DAIMON統合調整 ── */
 #screen-tomorrow #app-nav { bottom: 44px; }
-#screen-tomorrow .itte-screen { padding-bottom: 140px; }
+#screen-tomorrow .itte-screen { padding-bottom: 180px; }
 #screen-tomorrow { min-height: 100vh; }
+
+
+/* ════════ 夜（帰ってからの一手）CSS ════════ */
+
+#screen-tomorrow #screen-yoru {
+    --black:    #0D0D0D;
+    --card:     #161616;
+    --card2:    #1E1E1E;
+    --gold:     #C9A84C;
+    --gold-dim: #8A7030;
+    --white:    #F0F0F0;
+    --mid:      #888;
+    --dim:      #444;
+    --red:      #B05040;
+    --green:    #4A8C5C;
+  }
+
+#screen-tomorrow #screen-yoru * { box-sizing: border-box; margin: 0; padding: 0; }
+
+#screen-tomorrow #screen-yoru {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+#screen-tomorrow #screen-yoru body {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 0 60px 0;
+  }
+
+  /* ─── HEADER ─── */
+#screen-tomorrow #screen-yoru header {
+    padding: 28px 20px 16px;
+    border-bottom: 1px solid var(--dim);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+#screen-tomorrow #screen-yoru header h1 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+  }
+#screen-tomorrow #screen-yoru header span {
+    font-size: 0.7rem;
+    color: var(--mid);
+    letter-spacing: 0.15em;
+  }
+
+  /* ─── SECTIONS ─── */
+#screen-tomorrow #screen-yoru .section {
+    padding: 24px 20px;
+    border-bottom: 1px solid #222;
+  }
+#screen-tomorrow #screen-yoru .label {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* ─── 今日の一手 表示 ─── */
+#screen-tomorrow #screen-yoru #main-display {
+    background: var(--card);
+    border: 1px solid #2A2A2A;
+    border-left: 3px solid var(--gold);
+    border-radius: 4px;
+    padding: 24px 20px;
+    margin-bottom: 16px;
+    min-height: 90px;
+    display: flex;
+    align-items: center;
+  }
+#screen-tomorrow #screen-yoru #task-text {
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+    color: var(--white);
+    word-break: break-all;
+  }
+#screen-tomorrow #screen-yoru #task-text.empty {
+    font-size: 1rem;
+    color: var(--mid);
+    font-weight: 400;
+  }
+#screen-tomorrow #screen-yoru #task-text.done {
+    color: var(--mid);
+    text-decoration: line-through;
+    text-decoration-color: var(--gold-dim);
+  }
+
+  /* ─── BUTTONS ─── */
+#screen-tomorrow #screen-yoru .btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+#screen-tomorrow #screen-yoru .btn:active { opacity: 0.7; }
+#screen-tomorrow #screen-yoru .btn-gold {
+    background: var(--gold);
+    color: #0D0D0D;
+  }
+#screen-tomorrow #screen-yoru .btn-outline {
+    background: transparent;
+    border: 1px solid var(--dim);
+    color: var(--mid);
+  }
+#screen-tomorrow #screen-yoru .btn-green {
+    background: var(--green);
+    color: var(--white);
+  }
+#screen-tomorrow #screen-yoru .btn-small {
+    padding: 10px 16px;
+    font-size: 0.82rem;
+    width: auto;
+    display: inline-block;
+  }
+#screen-tomorrow #screen-yoru .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+#screen-tomorrow #screen-yoru .btn-row .btn { flex: 1; }
+
+  /* ─── INPUT ─── */
+#screen-tomorrow #screen-yoru textarea, #screen-tomorrow #screen-yoru input[type="text"] {
+    width: 100%;
+    background: var(--card2);
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: var(--white);
+    font-size: 1rem;
+    font-family: inherit;
+    padding: 14px;
+    resize: none;
+    line-height: 1.6;
+    outline: none;
+    caret-color: var(--gold);
+  }
+#screen-tomorrow #screen-yoru textarea:focus, #screen-tomorrow #screen-yoru input[type="text"]:focus {
+    border-color: var(--gold-dim);
+  }
+#screen-tomorrow #screen-yoru textarea::placeholder, #screen-tomorrow #screen-yoru input::placeholder {
+    color: var(--dim);
+  }
+
+  /* ─── TIMER BLOCK ─── */
+#screen-tomorrow #screen-yoru #timer-block {
+    background: var(--card);
+    border: 1px solid #2A2A2A;
+    border-radius: 4px;
+    padding: 24px 20px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+#screen-tomorrow #screen-yoru #timer-display {
+    font-size: 3.2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+    color: var(--gold);
+    line-height: 1;
+    margin: 8px 0 4px;
+  }
+#screen-tomorrow #screen-yoru #timer-display.warning { color: #C07040; }
+#screen-tomorrow #screen-yoru #timer-display.danger { color: var(--red); }
+#screen-tomorrow #screen-yoru #timer-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--mid);
+    margin-bottom: 4px;
+  }
+#screen-tomorrow #screen-yoru #timer-subtext {
+    font-size: 0.8rem;
+    color: var(--mid);
+    margin-top: 12px;
+    line-height: 1.7;
+  }
+
+  /* ─── MESSAGE BOX ─── */
+#screen-tomorrow #screen-yoru .msg-box {
+    background: var(--card);
+    border: 1px solid #2A2A2A;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 16px;
+    font-size: 0.95rem;
+    line-height: 1.8;
+    color: var(--white);
+  }
+#screen-tomorrow #screen-yoru .msg-box.gold-border { border-left: 3px solid var(--gold); }
+#screen-tomorrow #screen-yoru .msg-box strong {
+    color: var(--gold);
+    display: block;
+    margin-bottom: 6px;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── LOG ─── */
+#screen-tomorrow #screen-yoru #log-section { background: #111; }
+#screen-tomorrow #screen-yoru #log-list { list-style: none; }
+#screen-tomorrow #screen-yoru #log-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid #1E1E1E;
+    font-size: 0.78rem;
+    color: var(--mid);
+    line-height: 1.6;
+  }
+#screen-tomorrow #screen-yoru #log-list li:last-child { border-bottom: none; }
+#screen-tomorrow #screen-yoru #log-list .log-task { color: var(--white); font-weight: 600; }
+#screen-tomorrow #screen-yoru #log-list .log-meta { font-size: 0.68rem; color: var(--dim); margin-top: 2px; }
+#screen-tomorrow #screen-yoru #log-empty { color: var(--dim); font-size: 0.8rem; }
+
+  /* ─── MODAL OVERLAY ─── */
+#screen-tomorrow #screen-yoru #yoru-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+#screen-tomorrow #screen-yoru #yoru-modal-overlay.active { display: flex; }
+#screen-tomorrow #screen-yoru #yoru-confirm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 101;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+#screen-tomorrow #screen-yoru #yoru-confirm-overlay.active { display: flex; }
+#screen-tomorrow #screen-yoru #confirm-box {
+    background: var(--card);
+    border: 1px solid #333;
+    border-top: 3px solid #8A2A1A;
+    border-radius: 6px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 400px;
+  }
+#screen-tomorrow #screen-yoru #confirm-box h2 {
+    font-size: 1rem;
+    color: var(--white);
+    margin-bottom: 20px;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+  }
+#screen-tomorrow #screen-yoru #yoru-modal-box {
+    background: var(--card);
+    border: 1px solid #333;
+    border-top: 3px solid var(--gold);
+    border-radius: 6px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 400px;
+  }
+#screen-tomorrow #screen-yoru #yoru-modal-box h2 {
+    font-size: 1.05rem;
+    color: var(--gold);
+    margin-bottom: 10px;
+    letter-spacing: 0.06em;
+  }
+#screen-tomorrow #screen-yoru #yoru-modal-box p {
+    font-size: 0.88rem;
+    color: var(--mid);
+    line-height: 1.8;
+    margin-bottom: 20px;
+  }
+
+  /* ─── UTIL ─── */
+#screen-tomorrow #screen-yoru .hidden { display: none !important; }
+#screen-tomorrow #screen-yoru .mt8 { margin-top: 8px; }
+#screen-tomorrow #screen-yoru .mt12 { margin-top: 12px; }
+#screen-tomorrow #screen-yoru .mt16 { margin-top: 16px; }
+#screen-tomorrow #screen-yoru .gold { color: var(--gold); }
+#screen-tomorrow #screen-yoru .dim { color: var(--mid); font-size: 0.8rem; }
+#screen-tomorrow #screen-yoru .separator {
+    height: 1px;
+    background: #222;
+    margin: 16px 0;
+  }
+
+  /* ─── TIME SELECTOR ─── */
+#screen-tomorrow #screen-yoru #time-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+#screen-tomorrow #screen-yoru .time-btn {
+    flex: 1;
+    padding: 12px 0;
+    background: var(--card2);
+    border: 1px solid var(--dim);
+    border-radius: 4px;
+    color: var(--mid);
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+#screen-tomorrow #screen-yoru .time-btn:active { opacity: 0.7; }
+#screen-tomorrow #screen-yoru .time-btn.active {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(201,168,76,0.08);
+  }
+
+  /* ─── RECOVERY BLOCK ─── */
+#screen-tomorrow #screen-yoru #recovery-block {
+    text-align: center;
+    padding: 28px 20px;
+    border-top: 1px solid #222;
+  }
+#screen-tomorrow #screen-yoru #recovery-block .recovery-title {
+    font-size: 1rem;
+    color: var(--gold);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+  }
+#screen-tomorrow #screen-yoru #recovery-block p {
+    font-size: 0.88rem;
+    color: var(--mid);
+    line-height: 2;
+  }
+#screen-tomorrow #screen-yoru #recovery-block .big-ok {
+    font-size: 2rem;
+    margin: 16px 0 8px;
+    color: var(--gold-dim);
+  }
+
+
+/* ── 夜画面 統合調整 ── */
+#screen-tomorrow #screen-yoru { padding-bottom: 180px; min-height: 100vh; }
 
 </style>
 </head>
@@ -1728,6 +2081,196 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
 </div>
 
 <!-- ── NAV ── -->
+
+<!-- ════════ 夜（帰ってからの一手） ════════ -->
+<div id="screen-yoru" class="itte-screen">
+
+
+<!-- ─── HEADER ─── -->
+<header>
+  <h1>帰ってからの一手メモ</h1>
+  <span>鉄兵専用</span>
+</header>
+
+<!-- ─── VIEW: IDLE (初期 / 今日の一手確認) ─── -->
+<div id="view-idle">
+
+  <!-- 今日の一手 表示 -->
+  <div class="section">
+    <div class="label">今日の入口</div>
+    <div id="main-display">
+      <div id="task-text" class="empty">まだ登録されていません</div>
+    </div>
+    <!-- 完了・編集ボタン（登録後に表示） -->
+    <div id="action-buttons" class="btn-row hidden">
+      <button class="btn btn-gold" onclick="confirmComplete()">完了した</button>
+      <button class="btn btn-outline" onclick="showEdit()">編集する</button>
+      <button class="btn btn-outline" style="color:#B05040;border-color:#5A2A20;" onclick="deleteTask()">削除</button>
+    </div>
+    <!-- 完了後メッセージ -->
+    <div id="done-msg" class="msg-box gold-border hidden mt12">
+      <strong>よし、今日の一手完了。</strong>
+      ここから次へ進めます。
+    </div>
+  </div>
+
+  <!-- 入力・編集エリア -->
+  <div class="section" id="input-section">
+    <div class="label">一手を登録する</div>
+    <textarea id="task-input" rows="3" placeholder="例：Stripe登録を進める、風呂に入る、明日の一手を考える…"></textarea>
+    <div class="btn-row mt12">
+      <button class="btn btn-gold" onclick="saveTask()">保存する</button>
+      <button class="btn btn-outline hidden" id="cancel-edit-btn" onclick="cancelEdit()">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- 制作タイマー起動 -->
+  <div class="section">
+    <div class="label">夜の制作モード</div>
+    <div class="msg-box">
+      <strong>制作タイマー</strong>
+      全部やらなくていい。今夜は一手だけ。
+    </div>
+    <div class="label" style="margin-bottom:10px;">時間を選ぶ</div>
+    <div id="time-selector">
+      <button class="time-btn" data-min="15" onclick="selectTime(15)">15分</button>
+      <button class="time-btn active" data-min="30" onclick="selectTime(30)">30分</button>
+      <button class="time-btn" data-min="45" onclick="selectTime(45)">45分</button>
+      <button class="time-btn" data-min="60" onclick="selectTime(60)">60分</button>
+      <button class="time-btn" data-min="90" onclick="selectTime(90)">90分</button>
+    </div>
+    <button class="btn btn-gold mt12" id="start-btn" onclick="startTimer()">制作開始（30分）</button>
+  </div>
+
+  <!-- 明日の一手への導線（完了後のみ表示） -->
+  <div class="section hidden" id="tomorrow-section">
+    <div class="label">次の入口</div>
+    <p class="dim" style="margin-bottom:12px;">次にやるなら</p>
+    <button class="btn btn-outline" onclick="showTomorrowMsg()">明日の一手を考える</button>
+    <div id="tomorrow-msg" class="msg-box mt12 hidden">
+      明日の入口だけ決めたら、今日は仕事を手放してOK。
+    </div>
+  </div>
+
+  <!-- 完了ログ -->
+  <div class="section" id="log-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="label" style="margin-bottom:0;">完了ログ</div>
+      <div style="display:flex;gap:8px;">
+        <button id="select-mode-btn" class="btn btn-outline btn-small" style="font-size:0.72rem;padding:6px 12px;" onclick="toggleSelectMode()">選択削除</button>
+        <button class="btn btn-outline btn-small" style="color:#B05040;border-color:#5A2A20;font-size:0.72rem;padding:6px 12px;" onclick="clearLog()">全削除</button>
+      </div>
+    </div>
+    <div id="select-bar" class="hidden" style="display:flex;gap:8px;margin-bottom:12px;">
+      <button class="btn btn-outline btn-small" style="font-size:0.72rem;padding:6px 12px;" onclick="selectAllLog()">全選択</button>
+      <button class="btn btn-outline btn-small" style="font-size:0.72rem;padding:6px 12px;" onclick="deselectAllLog()">解除</button>
+      <button id="delete-selected-btn" class="btn btn-small" style="background:#8A2A1A;color:#F0F0F0;font-size:0.72rem;padding:6px 12px;margin-left:auto;" onclick="deleteSelectedLog()">選択を削除</button>
+    </div>
+    <ul id="log-list"><li id="log-empty">まだ完了記録がありません</li></ul>
+  </div>
+
+</div><!-- /view-idle -->
+
+
+<!-- ─── VIEW: TIMER (制作モード) ─── -->
+<div id="view-timer" class="hidden">
+
+  <div class="section">
+    <div class="label">夜の制作時間</div>
+    <div id="timer-block">
+      <div id="timer-label">残り時間</div>
+      <div id="timer-display">30:00</div>
+      <div id="timer-subtext">全部やらなくていい。<br>今日はこの一手だけ。</div>
+    </div>
+    <div id="timer-task-box" class="msg-box gold-border">
+      <strong>今日の夜の一手</strong>
+      <span id="timer-task-text">—</span>
+    </div>
+    <button class="btn btn-outline mt12" onclick="pauseResume()">一時停止</button>
+  </div>
+
+</div><!-- /view-timer -->
+
+
+<!-- ─── VIEW: TIMER DONE (30分完了) ─── -->
+<div id="view-done" class="hidden">
+
+  <div class="section">
+    <div class="msg-box gold-border">
+      <strong id="done-title">30分完了。今日はここまで。</strong>
+      一手進んだら十分です。<br>ここからは回復へ戻りましょう。
+    </div>
+
+    <!-- 延長ボタン（小さく） -->
+    <div style="text-align:right; margin: 4px 0 16px;">
+      <button class="btn btn-outline btn-small" onclick="askExtend()">10分だけ延長</button>
+    </div>
+
+    <!-- 完了証拠 -->
+    <div class="label">今日できた証拠（1行だけ）</div>
+    <input type="text" id="evidence-input" placeholder="例：Stripe登録画面を確認した">
+    <div class="separator"></div>
+
+    <!-- 明日の入口 -->
+    <div class="label">次の入口（1つだけ）</div>
+    <input type="text" id="next-input" placeholder="例：明日はStripeで商品登録をする">
+    <p class="dim mt8">ToDoリストじゃない。次回迷わないための入口を1つだけ。</p>
+
+    <button class="btn btn-green mt16" onclick="saveEvidence()">記録して完了にする</button>
+  </div>
+
+</div><!-- /view-done -->
+
+
+<!-- ─── VIEW: RECOVERY (回復モード) ─── -->
+<div id="view-recovery" class="hidden">
+
+  <div id="recovery-block">
+    <div class="big-ok">✦</div>
+    <div class="recovery-title">今日の制作は完了。</div>
+    <p>
+      明日の入口も置いた。<br>
+      ここからは回復へ戻る。<br><br>
+      風呂、夜サプリ、睡眠。<br>
+      もう決まってる。
+    </p>
+  </div>
+
+  <div class="section" id="recovery-log">
+    <div class="label">今日の記録</div>
+    <div id="recovery-summary" class="msg-box"></div>
+  </div>
+
+  <div class="section">
+    <button class="btn btn-outline" onclick="backToIdle()">一手メモに戻る</button>
+  </div>
+
+</div><!-- /view-recovery -->
+
+
+<!-- ─── MODAL: 延長確認 ─── -->
+<div id="yoru-modal-overlay">
+  <div id="yoru-modal-box">
+    <h2>本当に今夜やる必要がありますか？</h2>
+    <p>明日の入口だけ置いて、<br>今日は回復へ戻る選択もできます。</p>
+    <button class="btn btn-outline" style="margin-bottom:10px;" onclick="yoruCloseModal()">今日はここまで</button>
+    <button class="btn btn-gold" onclick="doExtend()">10分だけ延長</button>
+  </div>
+</div>
+
+<!-- ─── MODAL: 削除確認 ─── -->
+<div id="yoru-confirm-overlay">
+  <div id="confirm-box">
+    <h2 id="confirm-msg">削除しますか？</h2>
+    <button class="btn btn-outline" style="margin-bottom:10px;" onclick="yoruCloseConfirm()">キャンセル</button>
+    <button class="btn" id="confirm-ok-btn" style="background:#8A2A1A;color:#F0F0F0;" onclick="yoruExecConfirm()">削除する</button>
+  </div>
+</div>
+
+
+
+</div>
+
 <nav id="app-nav">
   <button class="nav-btn active" data-screen="morning" onclick="navigate('morning', this)">
     <span class="icon" id="nav-morning-icon">📝</span>朝に読む
@@ -1743,6 +2286,9 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
   </button>
   <button class="nav-btn" data-screen="settings" onclick="navigate('settings', this)">
     <span class="icon">⚙</span>設定
+  </button>
+  <button class="nav-btn" data-screen="yoru" onclick="navigate('yoru', this)">
+    <span class="icon">🌙</span>夜
   </button>
 </nav>
 
@@ -2820,6 +3366,7 @@ function navigate(screenId, btn) {
   if (screenId === 'history') renderHistory();
   if (screenId === 'settings') { loadRoutineToForm(); applyMode(); }
   if (screenId === 'calendar') renderCalendar();
+  if (screenId === 'yoru') yoruInit();
   window.scrollTo(0, 0);
 }
 
@@ -3867,6 +4414,418 @@ renderMorning();
 applyMode();
 checkOnboarding();
 
+
+</script>
+<script>
+/* ════════ 夜（帰ってからの一手）JS ════════ */
+
+// ─────────────────────────────
+//  STATE
+// ─────────────────────────────
+const STORAGE_TASK    = 'itte_task';
+const STORAGE_DONE    = 'itte_done';
+const STORAGE_LOG     = 'itte_log';
+const STORAGE_DATE    = 'itte_date';
+
+let timerInterval = null;
+let timerSeconds  = 30 * 60;
+let timerRunning  = false;
+let isPaused      = false;
+let selectedMinutes = 30; // デフォルト30分
+
+// ─────────────────────────────
+//  TIME SELECTOR
+// ─────────────────────────────
+function selectTime(min) {
+  selectedMinutes = min;
+  document.querySelectorAll('.time-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.min) === min);
+  });
+  document.getElementById('start-btn').textContent = `制作開始（${min}分）`;
+}
+
+// ─────────────────────────────
+//  INIT
+// ─────────────────────────────
+function yoruInit() {
+  checkNewDay();
+  renderTask();
+  renderLog();
+  showView('idle');
+}
+window.addEventListener('DOMContentLoaded', yoruInit);
+
+function checkNewDay() {
+  const saved = localStorage.getItem(STORAGE_DATE);
+  const today = todayStr();
+  if (saved !== today) {
+    localStorage.setItem(STORAGE_DATE, today);
+    // 前日の完了状態はリセット（タスク文字列は残す）
+    localStorage.setItem(STORAGE_DONE, 'false');
+  }
+}
+
+// ─────────────────────────────
+//  VIEWS
+// ─────────────────────────────
+function showView(v) {
+  ['idle','timer','done','recovery'].forEach(name => {
+    document.getElementById('view-' + name).classList.toggle('hidden', name !== v);
+  });
+}
+
+// ─────────────────────────────
+//  TASK: 保存・表示
+// ─────────────────────────────
+function saveTask() {
+  const val = document.getElementById('task-input').value.trim();
+  if (!val) return;
+  localStorage.setItem(STORAGE_TASK, val);
+  localStorage.setItem(STORAGE_DONE, 'false');
+  document.getElementById('task-input').value = '';
+  document.getElementById('cancel-edit-btn').classList.add('hidden');
+  document.getElementById('input-section').classList.add('hidden');
+  renderTask();
+}
+
+function renderTask() {
+  const task = localStorage.getItem(STORAGE_TASK);
+  const done = localStorage.getItem(STORAGE_DONE) === 'true';
+  const el   = document.getElementById('task-text');
+  const btns = document.getElementById('action-buttons');
+  const doneMsg = document.getElementById('done-msg');
+  const tomorrowSec = document.getElementById('tomorrow-section');
+  const inputSec = document.getElementById('input-section');
+
+  if (!task) {
+    el.textContent = 'まだ登録されていません';
+    el.className = 'empty';
+    btns.classList.add('hidden');
+    doneMsg.classList.add('hidden');
+    tomorrowSec.classList.add('hidden');
+    inputSec.classList.remove('hidden');
+    return;
+  }
+
+  el.textContent = task;
+  el.className = done ? 'done' : '';
+  btns.classList.remove('hidden');
+  doneMsg.classList.toggle('hidden', !done);
+  tomorrowSec.classList.toggle('hidden', !done);
+  inputSec.classList.add('hidden');
+}
+
+function showEdit() {
+  const task = localStorage.getItem(STORAGE_TASK) || '';
+  document.getElementById('task-input').value = task;
+  document.getElementById('input-section').classList.remove('hidden');
+  document.getElementById('cancel-edit-btn').classList.remove('hidden');
+  document.getElementById('task-input').focus();
+}
+
+function cancelEdit() {
+  document.getElementById('task-input').value = '';
+  document.getElementById('input-section').classList.add('hidden');
+  document.getElementById('cancel-edit-btn').classList.add('hidden');
+}
+
+function deleteTask() {
+  yoruShowConfirm('この一手を削除しますか？', () => {
+    localStorage.removeItem(STORAGE_TASK);
+    localStorage.setItem(STORAGE_DONE, 'false');
+    renderTask();
+  });
+}
+
+function confirmComplete() {
+  const task = localStorage.getItem(STORAGE_TASK);
+  if (!task) return;
+  localStorage.setItem(STORAGE_DONE, 'true');
+  addLog(task, '完了');
+  renderTask();
+  renderLog();
+}
+
+// ─────────────────────────────
+//  TOMORROW MSG
+// ─────────────────────────────
+function showTomorrowMsg() {
+  document.getElementById('tomorrow-msg').classList.toggle('hidden');
+}
+
+// ─────────────────────────────
+//  LOG
+// ─────────────────────────────
+function addLog(task, type, evidence, nextEntry) {
+  const logs = getLog();
+  logs.unshift({
+    date: todayStr(),
+    time: nowTimeStr(),
+    task,
+    type,
+    evidence: evidence || '',
+    next: nextEntry || ''
+  });
+  // 最大30件
+  if (logs.length > 30) logs.pop();
+  localStorage.setItem(STORAGE_LOG, JSON.stringify(logs));
+}
+
+let selectMode = false;
+
+function toggleSelectMode() {
+  selectMode = !selectMode;
+  const btn = document.getElementById('select-mode-btn');
+  const bar = document.getElementById('select-bar');
+  if (selectMode) {
+    btn.textContent = 'キャンセル';
+    btn.style.color = 'var(--gold)';
+    btn.style.borderColor = 'var(--gold-dim)';
+    bar.classList.remove('hidden');
+    bar.style.display = 'flex';
+  } else {
+    btn.textContent = '選択削除';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+    bar.classList.add('hidden');
+  }
+  renderLog();
+}
+
+function selectAllLog() {
+  document.querySelectorAll('.log-checkbox').forEach(cb => cb.checked = true);
+  updateDeleteSelectedBtn();
+}
+
+function deselectAllLog() {
+  document.querySelectorAll('.log-checkbox').forEach(cb => cb.checked = false);
+  updateDeleteSelectedBtn();
+}
+
+function updateDeleteSelectedBtn() {
+  const count = document.querySelectorAll('.log-checkbox:checked').length;
+  const btn = document.getElementById('delete-selected-btn');
+  btn.textContent = count > 0 ? `選択を削除（${count}件）` : '選択を削除';
+}
+
+function deleteSelectedLog() {
+  const checked = [...document.querySelectorAll('.log-checkbox:checked')];
+  if (!checked.length) return;
+  const indices = checked.map(cb => parseInt(cb.dataset.index));
+  yoruShowConfirm(`${indices.length}件を削除しますか？`, () => {
+    const logs = getLog();
+    const newLogs = logs.filter((_, i) => !indices.includes(i));
+    localStorage.setItem(STORAGE_LOG, JSON.stringify(newLogs));
+    selectMode = false;
+    const btn = document.getElementById('select-mode-btn');
+    btn.textContent = '選択削除';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+    document.getElementById('select-bar').classList.add('hidden');
+    renderLog();
+  });
+}
+
+function clearLog() {
+  yoruShowConfirm('ログを全件削除しますか？', () => {
+    localStorage.removeItem(STORAGE_LOG);
+    renderLog();
+  });
+}
+
+function deleteLogEntry(index) {
+  yoruShowConfirm('この記録を削除しますか？', () => {
+    const logs = getLog();
+    logs.splice(index, 1);
+    localStorage.setItem(STORAGE_LOG, JSON.stringify(logs));
+    renderLog();
+  });
+}
+
+function getLog() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_LOG)) || []; }
+  catch { return []; }
+}
+
+function renderLog() {
+  const logs = getLog();
+  const ul   = document.getElementById('log-list');
+  const empty = document.getElementById('log-empty');
+  if (!logs.length) {
+    if (empty) empty.style.display = '';
+    while (ul.children.length > 1) ul.removeChild(ul.lastChild);
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  while (ul.children.length > 1) ul.removeChild(ul.lastChild);
+
+  logs.forEach((entry, i) => {
+    const li = document.createElement('li');
+    li.style.display = 'flex';
+    li.style.justifyContent = 'space-between';
+    li.style.alignItems = 'flex-start';
+    li.style.gap = '8px';
+
+    let html = '';
+
+    if (selectMode) {
+      // チェックボックスモード
+      html += `<label style="display:flex;align-items:flex-start;gap:10px;flex:1;cursor:pointer;">`;
+      html += `<input type="checkbox" class="log-checkbox" data-index="${i}" onchange="updateDeleteSelectedBtn()"
+        style="margin-top:3px;accent-color:var(--gold);width:16px;height:16px;flex-shrink:0;">`;
+      html += `<div style="flex:1;">`;
+      html += `<div class="log-task">${escHtml(entry.task)}</div>`;
+      html += `<div class="log-meta">${entry.date} ${entry.time}`;
+      if (entry.type === '制作完了' && entry.evidence) html += ` ／ ${escHtml(entry.evidence)}`;
+      html += `</div>`;
+      if (entry.next) html += `<div class="log-meta" style="color:#665530;">→ ${escHtml(entry.next)}</div>`;
+      html += `</div></label>`;
+    } else {
+      // 通常モード（✕個別削除）
+      html += `<div style="flex:1;">`;
+      html += `<div class="log-task">${escHtml(entry.task)}</div>`;
+      html += `<div class="log-meta">${entry.date} ${entry.time}`;
+      if (entry.type === '制作完了' && entry.evidence) html += ` ／ ${escHtml(entry.evidence)}`;
+      html += `</div>`;
+      if (entry.next) html += `<div class="log-meta" style="color:#665530;">→ ${escHtml(entry.next)}</div>`;
+      html += `</div>`;
+      html += `<button onclick="deleteLogEntry(${i})" style="background:none;border:none;color:#5A3A30;font-size:1rem;cursor:pointer;padding:2px 4px;flex-shrink:0;">✕</button>`;
+    }
+
+    li.innerHTML = html;
+    ul.appendChild(li);
+  });
+}
+
+// ─────────────────────────────
+//  TIMER
+// ─────────────────────────────
+function startTimer() {
+  const task = localStorage.getItem(STORAGE_TASK) || '（一手未登録）';
+  document.getElementById('timer-task-text').textContent = task;
+  timerSeconds = selectedMinutes * 60;
+  timerRunning = true;
+  isPaused = false;
+  updateTimerDisplay();
+  showView('timer');
+  clearInterval(timerInterval);
+  timerInterval = setInterval(tickTimer, 1000);
+}
+
+function tickTimer() {
+  if (isPaused) return;
+  timerSeconds--;
+  updateTimerDisplay();
+  if (timerSeconds <= 0) {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    document.getElementById('done-title').textContent = `${selectedMinutes}分完了。今日はここまで。`;
+    showView('done');
+  }
+}
+
+function updateTimerDisplay() {
+  const m = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+  const s = String(timerSeconds % 60).padStart(2, '0');
+  const el = document.getElementById('timer-display');
+  el.textContent = `${m}:${s}`;
+  const total = selectedMinutes * 60;
+  el.className = timerSeconds <= total * 0.1 ? 'danger'
+               : timerSeconds <= total * 0.2 ? 'warning' : '';
+}
+
+function pauseResume() {
+  isPaused = !isPaused;
+  document.querySelector('#view-timer .btn-outline').textContent =
+    isPaused ? '再開する' : '一時停止';
+}
+
+// ─────────────────────────────
+//  CONFIRM MODAL
+// ─────────────────────────────
+let _confirmCallback = null;
+function yoruShowConfirm(msg, callback) {
+  document.getElementById('confirm-msg').textContent = msg;
+  _confirmCallback = callback;
+  document.getElementById('yoru-confirm-overlay').classList.add('active');
+}
+function yoruCloseConfirm() {
+  _confirmCallback = null;
+  document.getElementById('yoru-confirm-overlay').classList.remove('active');
+}
+function yoruExecConfirm() {
+  document.getElementById('yoru-confirm-overlay').classList.remove('active');
+  if (_confirmCallback) { _confirmCallback(); _confirmCallback = null; }
+}
+
+// ─────────────────────────────
+//  EXTEND (延長)
+// ─────────────────────────────
+function askExtend() {
+  document.getElementById('yoru-modal-overlay').classList.add('active');
+}
+function yoruCloseModal() {
+  document.getElementById('yoru-modal-overlay').classList.remove('active');
+}
+function doExtend() {
+  yoruCloseModal();
+  timerSeconds = 10 * 60;
+  timerRunning = true;
+  isPaused = false;
+  updateTimerDisplay();
+  showView('timer');
+  clearInterval(timerInterval);
+  timerInterval = setInterval(tickTimer, 1000);
+  document.querySelector('#view-timer .btn-outline').textContent = '一時停止';
+}
+
+// ─────────────────────────────
+//  EVIDENCE / RECOVERY
+// ─────────────────────────────
+function saveEvidence() {
+  const evidence = document.getElementById('evidence-input').value.trim();
+  const next     = document.getElementById('next-input').value.trim();
+  const task     = localStorage.getItem(STORAGE_TASK) || '（記録なし）';
+
+  localStorage.setItem(STORAGE_DONE, 'true');
+  addLog(task, '制作完了', evidence, next);
+  renderLog();
+
+  // recovery summary
+  const summaryEl = document.getElementById('recovery-summary');
+  let html = '';
+  if (evidence) html += `<strong>今日の証拠</strong>${escHtml(evidence)}`;
+  if (next)     html += `<strong style="margin-top:12px;display:block;">明日の入口</strong>${escHtml(next)}`;
+  if (!html)    html = '今日も一手、進んだ。';
+  summaryEl.innerHTML = html;
+
+  showView('recovery');
+}
+
+function backToIdle() {
+  renderTask();
+  renderLog();
+  showView('idle');
+}
+
+// ─────────────────────────────
+//  UTIL
+// ─────────────────────────────
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+function nowTimeStr() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
 
 </script>
 </body>
