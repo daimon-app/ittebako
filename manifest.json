@@ -1,0 +1,62 @@
+{
+  "name": "一手箱",
+  "short_name": "一手箱",
+  "description": "ひらめきと明日の一手を預けて、現実へ戻るためのアプリ",
+  "start_url": "./index.html#drop",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Drop",
+      "short_name": "Drop",
+      "description": "一声だけ預ける",
+      "url": "./index.html#drop",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "一手",
+      "short_name": "一手",
+      "description": "明日の一手を決める",
+      "url": "./index.html#tomorrow",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "買う物だけ",
+      "short_name": "買う物",
+      "description": "ここにある物だけ買う",
+      "url": "./index.html#shopping",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "ひらめき整理",
+      "short_name": "整理",
+      "description": "AI整理コピー",
+      "url": "./index.html#organize",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "保存先",
+      "short_name": "保存先",
+      "description": "全データ確認",
+      "url": "./index.html#storage",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

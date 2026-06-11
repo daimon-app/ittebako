@@ -1,0 +1,3873 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>一手箱</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Shippori+Mincho:wght@400;700&display=swap');
+/* ════════════════════════════════════════
+   VARIABLES
+════════════════════════════════════════ */
+:root {
+  --bg:        #0a0a0a;
+  --bg2:       #111111;
+  --bg3:       #181818;
+  --gold:      #c9a84c;
+  --gold-dim:  #7a5e1e;
+  --gold-mid:  #5a4614;
+  --gold-glow: rgba(201,168,76,0.10);
+  --text:      #e0d8c8;
+  --text-dim:  #6a6050;
+  --text-mid:  #9a8868;
+  --radius:    10px;
+  --radius-sm: 6px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  min-height: 100%;
+}
+
+/* ════════════════════════════════════════
+   SCREEN SWITCHER
+════════════════════════════════════════ */
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: block; }
+
+/* ════════════════════════════════════════
+   ① DROP SCREEN
+════════════════════════════════════════ */
+#screen-drop {
+  display: none;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0 20px 64px;
+  overflow: hidden;
+}
+#screen-drop.active {
+  display: flex;
+}
+
+.drop-label {
+  padding-top: 52px;
+  padding-bottom: 10px;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+#drop-input {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #272217;
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1.65;
+  padding: 20px 0;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  caret-color: var(--gold);
+  -webkit-appearance: none;
+}
+#drop-input::placeholder {
+  color: var(--text-dim);
+  font-size: 18px;
+}
+
+.drop-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.10em;
+  text-align: center;
+  padding: 14px 0 20px;
+}
+
+#btn-drop-save {
+  width: 100%;
+  padding: 22px;
+  background: var(--gold);
+  color: #0a0a0a;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  margin-bottom: 44px;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s, transform 0.08s;
+}
+#btn-drop-save:active {
+  background: var(--gold-dim);
+  transform: scale(0.985);
+}
+
+/* ─ 保存完了インライン表示 ─ */
+#drop-feedback {
+  position: absolute;
+  top: 32%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+#drop-feedback.show {
+  visibility: visible;
+  animation: feedbackFlow 5s cubic-bezier(0.4, 0.0, 0.4, 1) forwards;
+}
+
+/* 1.2秒フェードイン → 2.4秒キープ → 1.4秒フェードアウト（計5.0秒）
+   24% = 1.2s / 72% = 3.6s / 100% = 5.0s */
+@keyframes feedbackFlow {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 8px));
+  }
+  24% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 4px));
+  }
+}
+
+.feedback-check {
+  font-size: 80px;
+  color: #c9a84c;
+  line-height: 1.2;
+  text-shadow: 0 0 24px rgba(201,168,76,0.18);
+}
+.feedback-line1 {
+  font-size: 25px;
+  color: #d8cdb8;
+  letter-spacing: 0.16em;
+  margin-top: 18px;
+  font-weight: 400;
+}
+.feedback-line2 {
+  font-size: 32px;
+  font-weight: 600;
+  color: #9aab8f;
+  letter-spacing: 0.20em;
+  margin-top: 14px;
+  text-shadow: 0 0 20px rgba(154,171,143,0.16);
+}
+
+/* 入力欄を一時的に隠す用 */
+#screen-drop.feedback-active #drop-input,
+#screen-drop.feedback-active .drop-sub,
+#screen-drop.feedback-active #btn-drop-save,
+#screen-drop.feedback-active .drop-label {
+  opacity: 0.06;
+}
+#screen-drop #drop-input,
+#screen-drop .drop-sub,
+#screen-drop #btn-drop-save,
+#screen-drop .drop-label {
+  transition: opacity 1.2s ease;
+}
+#screen-drop { position: relative; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ─ FAIL OVERLAY ─ */
+#fail-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #0a0a0a;
+  z-index: 999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#fail-overlay.show { display: flex; }
+
+.fail-mark {
+  font-size: 64px;
+  color: #8a3a3a;
+  line-height: 1;
+  animation: fadeIn 0.15s ease;
+}
+
+/* ════════════════════════════════════════
+   ⑤ TOMORROW（一手） SCREEN — iframe合体
+════════════════════════════════════════ */
+#screen-tomorrow {
+  background: #0a0a0a;
+  height: 100vh;
+  overflow: hidden;
+}
+
+
+/* ════════════════════════════════════════
+   ② SHOPPING SCREEN
+════════════════════════════════════════ */
+#screen-shopping {
+  padding-bottom: 130px;
+}
+
+.shop-header {
+  padding: 48px 20px 20px;
+  border-bottom: 1px solid #1a1a1a;
+}
+.shop-header-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+}
+.shop-header-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  margin-top: 10px;
+}
+
+.shop-main { padding: 0 16px; margin-top: 24px; }
+
+.shop-count {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  margin-bottom: 16px;
+}
+
+#shop-empty {
+  display: none;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 2.2;
+  letter-spacing: 0.06em;
+  border: 1px dashed #1c1c1c;
+  border-radius: var(--radius);
+}
+
+#shopping-list { display: flex; flex-direction: column; gap: 2px; }
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 4px;
+  border-bottom: 1px solid #141414;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.2s;
+}
+.item-row.checking { opacity: 0.3; pointer-events: none; }
+
+.item-check {
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--gold-dim);
+  border-radius: 5px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.item-row:active .item-check {
+  background: var(--gold-glow);
+  border-color: var(--gold);
+}
+.item-check-inner {
+  font-size: 14px;
+  color: var(--gold);
+  display: none;
+}
+.item-body {
+  flex: 1;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--text);
+  letter-spacing: 0.03em;
+}
+.item-date {
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.shop-footer {
+  position: fixed;
+  bottom: 44px;
+  left: 0;
+  right: 0;
+  padding: 12px 20px;
+  background: var(--bg);
+  border-top: 1px solid #141414;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.10em;
+}
+
+/* ─ 購入済みエリア ─ */
+#purchased-area {
+  margin-top: 32px;
+}
+.purchased-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 4px;
+  border-top: 1px solid #1a1a1a;
+  border-bottom: 1px solid #1a1a1a;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+}
+.purchased-arrow {
+  font-size: 12px;
+  color: var(--text-dim);
+  transition: transform 0.15s;
+}
+.purchased-arrow.open { transform: rotate(90deg); }
+
+.purchased-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 4px;
+  border-bottom: 1px solid #111;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.purchased-check {
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid #3a3020;
+  border-radius: 5px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--gold-dim);
+}
+.purchased-body {
+  flex: 1;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  letter-spacing: 0.03em;
+  text-decoration: line-through;
+  text-decoration-color: #3a3020;
+}
+.purchased-date {
+  font-size: 11px;
+  color: #3a3530;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════
+   ③ ORGANIZE SCREEN
+════════════════════════════════════════ */
+#screen-organize {
+  padding-bottom: 60px;
+}
+
+.org-header {
+  background: var(--bg);
+  border-bottom: 1px solid var(--gold-dim);
+  padding: 24px 20px 16px;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.org-header::after {
+  content: '';
+  display: block;
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48px;
+  height: 1px;
+  background: var(--gold-dim);
+}
+.org-header-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  line-height: 1;
+}
+.org-header-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.07em;
+  margin-top: 8px;
+}
+
+.org-main { padding: 0 16px; }
+
+/* 入力エリア */
+.input-area { padding: 22px 0 8px; }
+
+textarea#memo-input {
+  width: 100%;
+  min-height: 148px;
+  background: var(--bg3);
+  border: 1px solid #272217;
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.7;
+  padding: 16px;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+  caret-color: var(--gold);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+}
+textarea#memo-input:focus {
+  border-color: var(--gold-dim);
+  box-shadow: 0 0 0 3px var(--gold-glow);
+}
+textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
+
+.btn-save {
+  width: 100%;
+  padding: 18px;
+  margin-top: 12px;
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.btn-save:active { background: var(--gold-mid); }
+
+/* トースト */
+#toast {
+  display: none;
+  background: var(--bg3);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius-sm);
+  color: var(--text-mid);
+  font-size: 13px;
+  padding: 10px 16px;
+  margin-top: 10px;
+  text-align: center;
+  letter-spacing: 0.06em;
+}
+
+.section-divider {
+  border: none;
+  border-top: 1px solid #1c1c1c;
+  margin: 20px 0 16px;
+}
+
+.search-row {
+  margin-bottom: 12px;
+}
+.search-row input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid #272217;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
+  padding: 10px 14px;
+  outline: none;
+  font-family: inherit;
+  caret-color: var(--gold);
+  -webkit-appearance: none;
+}
+.search-row input:focus { border-color: var(--gold-dim); }
+.search-row input::placeholder { color: var(--text-dim); }
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.btn-action-gold, .btn-action-crimson, .btn-action-select {
+  flex: 1 1 calc(50% - 5px);
+  min-width: 0;
+  padding: 14px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+.btn-action-gold {
+  background: transparent;
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+}
+.btn-action-gold:active { background: var(--gold-glow); }
+
+.btn-action-select {
+  background: transparent;
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+}
+.btn-action-select:active { background: var(--gold-glow); }
+
+.btn-action-crimson {
+  background: transparent;
+  border: 1px solid #5a1e1e;
+  color: #c87070;
+}
+.btn-action-crimson:active { background: rgba(200,112,112,0.08); }
+
+/* ─ メモカード選択状態 ─ */
+.memo-card {
+  position: relative;
+}
+.memo-card.selected {
+  border-color: var(--gold-dim);
+  background: #141008;
+}
+.memo-select-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--gold-dim);
+  border-radius: 4px;
+  margin-right: 10px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  font-size: 12px;
+  color: var(--gold);
+}
+.memo-card.selected .memo-select-check {
+  background: var(--gold-glow);
+  border-color: var(--gold);
+}
+.memo-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #1a1a1a;
+}
+.list-label {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+#memo-count {
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+
+#org-empty {
+  display: none;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 2.2;
+  letter-spacing: 0.04em;
+  border: 1px dashed #1c1c1c;
+  border-radius: var(--radius);
+  margin-top: 10px;
+}
+
+.memo-card {
+  background: var(--bg2);
+  border: 1px solid #1c1c1c;
+  border-radius: var(--radius);
+  padding: 14px 14px 10px;
+  margin-bottom: 8px;
+}
+.memo-text {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.memo-text mark {
+  background: var(--gold-glow);
+  color: var(--gold);
+  border-radius: 2px;
+}
+.memo-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #1a1a1a;
+}
+.memo-date {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+.memo-actions { display: flex; gap: 8px; }
+.btn-copy, .btn-del {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+.btn-copy {
+  background: transparent;
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+}
+.btn-copy:active { background: var(--gold-glow); }
+.btn-del {
+  background: transparent;
+  border: 1px solid #3a1a1a;
+  color: #8a4a4a;
+}
+.btn-del:active { background: rgba(138,74,74,0.15); }
+
+/* 削除確認 */
+#confirm-overlay, #storage-confirm-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+#confirm-overlay.show, #storage-confirm-overlay.show { display: flex; }
+
+.confirm-box {
+  background: var(--bg2);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius);
+  padding: 28px 20px 20px;
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+}
+.confirm-box p {
+  font-size: 15px;
+  color: var(--text);
+  letter-spacing: 0.06em;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+.confirm-btns { display: flex; gap: 10px; }
+.btn-confirm-cancel {
+  flex: 1;
+  padding: 15px;
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  border-radius: var(--radius-sm);
+  color: var(--text-mid);
+  font-size: 15px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-confirm-ok {
+  flex: 1;
+  padding: 15px;
+  background: var(--gold-mid);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  letter-spacing: 0.08em;
+}
+.btn-confirm-ok:active { background: var(--gold-dim); }
+
+/* ════════════════════════════════════════
+   ④ STORAGE SCREEN
+════════════════════════════════════════ */
+#screen-storage { padding-bottom: 80px; }
+
+.storage-header {
+  padding: 48px 20px 20px;
+  border-bottom: 1px solid #1a1a1a;
+}
+.storage-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+}
+.storage-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  margin-top: 10px;
+}
+
+.storage-main { padding: 20px 16px 0; }
+
+/* サマリーカード */
+.storage-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.summary-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg2);
+  border: 1px solid #1c1c1c;
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  min-width: 72px;
+  flex: 1;
+}
+.summary-chip-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+}
+.summary-chip-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  margin-top: 6px;
+}
+
+/* セクション */
+.storage-section {
+  margin-bottom: 24px;
+}
+.storage-section-title {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #1a1a1a;
+  margin-bottom: 8px;
+}
+.storage-item {
+  font-size: 14px;
+  color: var(--text-mid);
+  padding: 10px 4px;
+  border-bottom: 1px solid #111;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.storage-item-date {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 3px;
+  letter-spacing: 0.04em;
+}
+.storage-empty {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 10px 4px;
+  letter-spacing: 0.06em;
+}
+
+/* storage コピー・削除 */
+.storage-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.storage-action-row .btn-action-gold,
+.storage-action-row .btn-action-select {
+  flex: 1 1 calc(50% - 4px);
+}
+.storage-action-row .btn-action-crimson {
+  flex: 1 1 100%;
+}
+.storage-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.storage-item.selected {
+  background: #141008;
+}
+.storage-select-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--gold-dim);
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--gold);
+  transition: background 0.12s, border-color 0.12s;
+}
+.storage-item.selected .storage-select-check {
+  background: var(--gold-glow);
+  border-color: var(--gold);
+}
+.storage-item-content { flex: 1; min-width: 0; }
+
+/* ════════════════════════════════════════
+   NAV（Organize画面のみ表示）
+════════════════════════════════════════ */
+.org-nav {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 12px 20px;
+  border-top: 1px solid #1a1a1a;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg);
+}
+.org-nav a {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.10em;
+  text-decoration: none;
+  padding: 6px 10px;
+}
+.org-nav a:hover { color: var(--text-mid); }
+
+/* ════════ 明日の一手（完全移植） ════════ */
+
+  
+
+#screen-tomorrow {
+    --gold: #c9a84c;
+    --gold-light: #e8c96a;
+    --gold-dim: #8a6e30;
+    --bg: #0a0a0a;
+    --bg2: #111111;
+    --bg3: #1a1a1a;
+    --bg4: #242424;
+    --text: #e8e4dc;
+    --text-dim: #888880;
+    --text-faint: #444440;
+    --border: #2a2a28;
+    --border-gold: #3a3020;
+    --red: #c0392b;
+    --radius: 4px;
+  }
+
+#screen-tomorrow * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+#screen-tomorrow {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    overscroll-behavior: none;
+  }
+
+  /* ── NAV ── */
+#screen-tomorrow #app-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    display: flex;
+    background: var(--bg2);
+    border-top: 1px solid var(--border-gold);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+#screen-tomorrow .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px 8px;
+    gap: 3px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: color .2s;
+  }
+#screen-tomorrow .nav-btn.active { color: var(--gold); }
+#screen-tomorrow .nav-btn .icon { font-size: 22px; line-height: 1; }
+
+  /* ── SCREENS ── */
+#screen-tomorrow .itte-screen {
+    display: none;
+    min-height: 100vh;
+    padding: 0 0 80px;
+  }
+#screen-tomorrow .itte-screen.active { display: block; }
+
+  /* ── HEADER ── */
+#screen-tomorrow .itte-screen-header {
+    padding: 20px 20px 12px;
+    border-bottom: 1px solid var(--border-gold);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+#screen-tomorrow .itte-screen-title {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+  }
+#screen-tomorrow .itte-screen-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── FORM ── */
+#screen-tomorrow .form-wrap { padding: 16px; }
+
+#screen-tomorrow .field-row {
+    margin-bottom: 14px;
+  }
+#screen-tomorrow .field-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+#screen-tomorrow .field-badge {
+    background: var(--gold-dim);
+    color: var(--bg);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+    min-width: 28px;
+    text-align: center;
+  }
+#screen-tomorrow .field-name {
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+#screen-tomorrow input[type="text"], #screen-tomorrow input[type="date"], #screen-tomorrow textarea, #screen-tomorrow select {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 16px; /* 16px prevents zoom on iOS */
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color .2s;
+    -webkit-appearance: none;
+    appearance: none;
+    resize: none;
+  }
+  input[type="text"]:focus,
+  input[type="date"]:focus,
+#screen-tomorrow textarea:focus {
+    border-color: var(--gold-dim);
+    background: var(--bg4);
+  }
+#screen-tomorrow input[type="date"] { color-scheme: dark; }
+#screen-tomorrow textarea { min-height: 72px; line-height: 1.6; }
+#screen-tomorrow textarea.tall { min-height: 96px; }
+
+#screen-tomorrow .field-row-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  /* ── DIVIDER ── */
+#screen-tomorrow .divider {
+    margin: 18px 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+#screen-tomorrow .divider::before, #screen-tomorrow .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-gold);
+  }
+#screen-tomorrow .divider-text {
+    font-size: 10px;
+    color: var(--gold-dim);
+    letter-spacing: 0.15em;
+    white-space: nowrap;
+  }
+
+  /* ── BUTTONS ── */
+#screen-tomorrow .btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+  }
+#screen-tomorrow .btn-gold {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--bg);
+  }
+#screen-tomorrow .btn-gold:active { opacity: 0.8; transform: scale(0.99); }
+#screen-tomorrow .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border-gold);
+    color: var(--gold-dim);
+  }
+#screen-tomorrow .btn-outline:active { background: var(--bg3); }
+#screen-tomorrow .btn-sm {
+    padding: 9px 16px;
+    font-size: 12px;
+    width: auto;
+    display: inline-block;
+  }
+#screen-tomorrow .btn-danger {
+    background: transparent;
+    border: 1px solid #5a1c1c;
+    color: #c05050;
+  }
+#screen-tomorrow .btn-danger:active { background: #2a0a0a; }
+
+  /* ── MORNING SCREEN ── */
+#screen-tomorrow #screen-morning { background: var(--bg); }
+
+#screen-tomorrow .morning-card {
+    margin: 16px;
+    background: var(--bg2);
+    border: 1px solid var(--border-gold);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+#screen-tomorrow .morning-head {
+    background: linear-gradient(135deg, #1a1408, #242010);
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-gold);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+#screen-tomorrow .morning-site { font-size: 13px; color: var(--gold); font-weight: 700; letter-spacing: 0.1em; }
+#screen-tomorrow .morning-date { font-size: 11px; color: var(--text-dim); }
+
+#screen-tomorrow .morning-body { padding: 20px; }
+
+#screen-tomorrow .morning-line {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.7;
+  }
+#screen-tomorrow .morning-line:last-child { border-bottom: none; }
+
+#screen-tomorrow .ml-label {
+    font-size: 10px;
+    color: var(--gold-dim);
+    letter-spacing: 0.12em;
+    margin-bottom: 3px;
+  }
+#screen-tomorrow .ml-text {
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 500;
+  }
+#screen-tomorrow .ml-kotoage {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    line-height: 1.9;
+  }
+
+#screen-tomorrow .no-memo {
+    padding: 48px 24px;
+    text-align: center;
+  }
+#screen-tomorrow .no-memo-icon { font-size: 48px; margin-bottom: 16px; opacity: .3; }
+#screen-tomorrow .no-memo-text { color: var(--text-dim); font-size: 14px; line-height: 1.8; }
+
+  /* ── HISTORY ── */
+#screen-tomorrow .history-list { padding: 12px 16px; }
+
+#screen-tomorrow .history-item {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+#screen-tomorrow .history-item:active { border-color: var(--gold-dim); }
+
+#screen-tomorrow .hi-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+#screen-tomorrow .hi-site { font-size: 14px; font-weight: 700; color: var(--gold); }
+#screen-tomorrow .hi-date { font-size: 11px; color: var(--text-dim); }
+
+#screen-tomorrow .hi-body { padding: 10px 14px 12px; }
+#screen-tomorrow .hi-row { margin-bottom: 5px; }
+#screen-tomorrow .hi-key { font-size: 10px; color: var(--text-faint); display: inline; letter-spacing: 0.08em; }
+#screen-tomorrow .hi-val { font-size: 13px; color: var(--text-dim); display: inline; margin-left: 4px; }
+
+#screen-tomorrow .hi-footer {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--bg3);
+  }
+
+  /* ── EDIT MODAL ── */
+#screen-tomorrow #modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.85);
+    z-index: 200;
+    overflow-y: auto;
+    padding: 20px 0;
+  }
+#screen-tomorrow #modal-overlay.open { display: block; }
+#screen-tomorrow #modal-box {
+    background: var(--bg2);
+    margin: 0 12px;
+    border: 1px solid var(--border-gold);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+#screen-tomorrow .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border-gold);
+    background: linear-gradient(135deg, #1a1408, #1a1a1a);
+  }
+#screen-tomorrow .modal-title { font-size: 15px; color: var(--gold); font-weight: 700; letter-spacing: 0.08em; }
+#screen-tomorrow .modal-close {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 22px; cursor: pointer; line-height: 1; padding: 2px 6px;
+  }
+#screen-tomorrow .modal-body { padding: 16px; }
+#screen-tomorrow .modal-footer { padding: 0 16px 16px; display: flex; gap: 10px; }
+
+  /* ── TOAST ── */
+#screen-tomorrow #itte-toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--gold);
+    color: var(--bg);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    opacity: 0;
+    transition: all .3s;
+    z-index: 300;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+#screen-tomorrow #itte-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── MISC ── */
+#screen-tomorrow .btn-row { display: flex; gap: 10px; margin-bottom: 10px; }
+#screen-tomorrow .section-label {
+    font-size: 11px;
+    color: var(--gold-dim);
+    letter-spacing: 0.15em;
+    padding: 14px 16px 6px;
+    text-transform: uppercase;
+  }
+#screen-tomorrow .empty-history {
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 14px;
+    line-height: 2;
+  }
+
+  /* ── 日付入力の色調整 ── */
+#screen-tomorrow input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(70%) sepia(30%) saturate(300%) hue-rotate(10deg);
+    opacity: 0.7;
+  }
+
+  /* ── 日付で見る ── */
+#screen-tomorrow .cal-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 10px;
+  }
+#screen-tomorrow .cal-nav-btn {
+    background: none;
+    border: 1px solid var(--border-gold);
+    color: var(--gold);
+    font-size: 18px;
+    width: 40px; height: 40px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+#screen-tomorrow .cal-month {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 17px;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+  }
+#screen-tomorrow .cal-grid { padding: 0 12px 8px; }
+#screen-tomorrow .cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 4px;
+  }
+#screen-tomorrow .cal-wd {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-faint);
+    padding: 4px 0;
+  }
+#screen-tomorrow .cal-wd:first-child { color: #c05050; }
+#screen-tomorrow .cal-wd:last-child { color: #4a7ac0; }
+#screen-tomorrow .cal-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+  }
+#screen-tomorrow .cal-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    background: none;
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+    position: relative;
+    gap: 2px;
+    transition: background .15s;
+  }
+#screen-tomorrow .cal-day:active { background: var(--bg3); }
+#screen-tomorrow .cal-day.empty { cursor: default; pointer-events: none; }
+#screen-tomorrow .cal-day.today { border-color: var(--gold-dim); color: var(--gold); font-weight: 700; }
+#screen-tomorrow .cal-day.selected { background: var(--gold-dim); color: var(--bg); font-weight: 700; border-color: transparent; }
+#screen-tomorrow .cal-day.sun { color: #c05050; }
+#screen-tomorrow .cal-day.sat { color: #4a7ac0; }
+#screen-tomorrow .cal-day.selected { color: var(--bg) !important; }
+#screen-tomorrow .cal-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+#screen-tomorrow .cal-day.selected .cal-dot { background: var(--bg); }
+#screen-tomorrow .cal-detail { margin: 8px 12px 0; border-top: 1px solid var(--border-gold); padding-top: 12px; }
+#screen-tomorrow .cal-detail-title { font-size: 13px; color: var(--gold); font-weight: 700; letter-spacing: 0.08em; margin-bottom: 10px; padding: 0 4px; }
+#screen-tomorrow .cal-memo-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+#screen-tomorrow .cal-memo-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px 8px; border-bottom: 1px solid var(--border); }
+#screen-tomorrow .cal-memo-site { font-size: 14px; font-weight: 700; color: var(--gold); }
+#screen-tomorrow .cal-memo-body { padding: 10px 14px; }
+#screen-tomorrow .cal-memo-foot { padding: 8px 14px 10px; border-top: 1px solid var(--border); background: var(--bg3); }
+#screen-tomorrow .cal-no-memo { padding: 20px 4px; text-align: center; color: var(--text-faint); font-size: 13px; }
+
+#screen-tomorrow .time-select-row { display: flex; gap: 10px; align-items: center; }
+#screen-tomorrow .time-select-row select {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 16px;
+    padding: 12px 10px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    text-align: center;
+  }
+#screen-tomorrow .time-select-row select:focus { border-color: var(--gold-dim); }
+#screen-tomorrow .time-select-unit { font-size: 13px; color: var(--text-dim); flex-shrink: 0; }
+
+  /* ── リマインド・チェックボックス ── */
+#screen-tomorrow .remind-toggle { display: flex; align-items: center; gap: 10px; padding: 12px 0 8px; cursor: pointer; }
+#screen-tomorrow .remind-toggle input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--gold); cursor: pointer; flex-shrink: 0; }
+#screen-tomorrow .remind-toggle-label { font-size: 14px; color: var(--text-dim); }
+#screen-tomorrow .remind-fields { background: var(--bg3); border: 1px solid var(--border-gold); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; }
+#screen-tomorrow .remind-card {
+    background: linear-gradient(135deg, #1a1008, #1a1408);
+    border: 1px solid var(--gold-dim);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 8px 0;
+  }
+#screen-tomorrow .remind-card-label { font-size: 10px; color: var(--gold); letter-spacing: 0.12em; margin-bottom: 4px; }
+#screen-tomorrow .remind-card-text { font-size: 15px; color: var(--text); font-weight: 500; }
+
+  /* ── オンボーディング ── */
+#screen-tomorrow #onboarding-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.92);
+    z-index: 400;
+    overflow-y: auto;
+    padding: 32px 0;
+  }
+#screen-tomorrow #onboarding-overlay.open { display: flex; align-items: center; justify-content: center; }
+#screen-tomorrow .onboarding-box {
+    background: var(--bg2);
+    margin: 0 16px;
+    border: 1px solid var(--border-gold);
+    border-radius: 10px;
+    overflow: hidden;
+    max-width: 480px;
+    width: 100%;
+  }
+#screen-tomorrow .onboarding-head {
+    background: linear-gradient(135deg, #1a1408, #242010);
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border-gold);
+    text-align: center;
+  }
+#screen-tomorrow .onboarding-title {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 22px;
+    color: var(--gold);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+#screen-tomorrow .onboarding-sub { font-size: 12px; color: var(--text-dim); }
+#screen-tomorrow .onboarding-body { padding: 20px; }
+#screen-tomorrow .onboarding-body p { font-size: 13px; color: var(--text-dim); line-height: 1.9; margin-bottom: 14px; }
+#screen-tomorrow .onboarding-steps { padding: 0; margin: 0 0 6px; }
+#screen-tomorrow .onboarding-step {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+#screen-tomorrow .onboarding-step:last-child { border-bottom: none; }
+#screen-tomorrow .onboarding-num {
+    background: var(--gold-dim); color: var(--bg);
+    font-size: 11px; font-weight: 700;
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+#screen-tomorrow .onboarding-step-text { font-size: 13px; color: var(--text); line-height: 1.7; }
+#screen-tomorrow .onboarding-footer { padding: 8px 20px 20px; }
+
+
+/* ── DAIMON統合調整 ── */
+#screen-tomorrow #app-nav { bottom: 44px; }
+#screen-tomorrow .itte-screen { padding-bottom: 140px; }
+#screen-tomorrow { min-height: 100vh; }
+
+</style>
+</head>
+<body>
+
+<!-- ════════ ① DROP ════════ -->
+<div id="screen-drop" class="screen">
+  <div class="drop-label">一声だけ預ける</div>
+  <textarea
+    id="drop-input"
+    placeholder="今のひらめきを一声で"
+    autocomplete="off"
+    autocorrect="off"
+    autocapitalize="off"
+    spellcheck="false"
+  ></textarea>
+  <div class="drop-sub">保存したら戻る</div>
+  <button id="btn-drop-save" onclick="dropSave()">預ける</button>
+
+  <!-- 保存完了インライン表示 -->
+  <div id="drop-feedback">
+    <div class="feedback-check">✓</div>
+    <div class="feedback-line1">預かった。</div>
+    <div class="feedback-line2">戻ろう。</div>
+  </div>
+
+  <nav class="org-nav">
+    <a href="#drop">Drop</a>
+    <a href="#tomorrow">一手</a>
+    <a href="#shopping">買う物</a>
+    <a href="#organize">整理</a>
+    <a href="#storage">保存先</a>
+  </nav>
+</div>
+
+<!-- × 失敗オーバーレイ -->
+<div id="fail-overlay">
+  <div class="fail-mark">×</div>
+</div>
+
+<!-- ════════ ⑤ TOMORROW（一手・完全移植） ════════ -->
+<div id="screen-tomorrow" class="screen">
+
+
+<!-- ── SCREENS ── -->
+
+<!-- 朝に読む -->
+<div id="screen-morning" class="itte-screen active">
+  <div class="screen-header">
+    <div class="screen-title">明日の一手</div>
+    <div class="screen-sub">今日の一手、もう決まってる！</div>
+  </div>
+  <div id="morning-content"></div>
+</div>
+
+<!-- 新規入力 -->
+<div id="screen-input" class="itte-screen">
+  <div class="screen-header">
+    <div class="screen-title">現場メモ</div>
+    <div class="screen-sub">現場終わりの10秒で、明日を決める</div>
+  </div>
+  <div class="form-wrap">
+
+    <div class="field-row-2col">
+      <div>
+        <div class="field-label">
+          <span class="field-badge">現場</span>
+        </div>
+        <input type="text" id="f-site" placeholder="現場名" autocomplete="off">
+      </div>
+      <div>
+        <div class="field-label">
+          <span class="field-badge">日付</span>
+        </div>
+        <input type="date" id="f-date">
+      </div>
+    </div>
+
+    <div class="divider"><span class="divider-text">明日の作業</span></div>
+
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-badge">明日</span>
+        <span class="field-name">メイン作業</span>
+      </div>
+      <textarea id="f-main" placeholder="明日のメイン作業は何か" rows="2"></textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-badge">入</span>
+        <span class="field-name">どこから入るか</span>
+      </div>
+      <input type="text" id="f-start" placeholder="最初に手をつける場所・作業">
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-badge">注</span>
+        <span class="field-name">注意点</span>
+      </div>
+      <textarea id="f-caution" placeholder="危険・段取り・職人との調整など" rows="2"></textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-badge">物</span>
+        <span class="field-name">必要な物・忘れ物防止</span>
+      </div>
+      <textarea id="f-items" placeholder="工具・材料・図面・書類など" rows="2"></textarea>
+    </div>
+
+    <div class="divider"><span class="divider-text">朝イチの設定</span></div>
+
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-badge">感</span>
+        <span class="field-name">感謝・今日よかったこと</span>
+      </div>
+      <input type="text" id="f-gratitude" placeholder="仕事・身体・道具・縁に感謝">
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-badge">朝イチ</span>
+        <span class="field-name">最初の具体行動</span>
+      </div>
+      <input type="text" id="f-first" placeholder="現場に着いたらまず○○から">
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-badge">メモ</span>
+        <span class="field-name">自由メモ</span>
+      </div>
+      <textarea id="f-note" placeholder="その他、残しておきたいこと" rows="2"></textarea>
+    </div>
+
+    <div class="field-row" style="border-top: 1px solid var(--border-gold); padding-top: 14px; margin-top: 4px;">
+      <label class="remind-toggle">
+        <input type="checkbox" id="f-important" onchange="toggleRemindFields()">
+        <span class="remind-toggle-label" id="remind-toggle-label">忘れ防止にする</span>
+      </label>
+      <div id="remind-fields" style="display:none;" class="remind-fields">
+        <div class="field-row" style="margin-bottom:10px;">
+          <div class="field-label"><span class="field-badge" id="remind-badge">忘れ防止</span></div>
+          <input type="text" id="f-remind-text" placeholder="例：予備バッテリーを忘れない">
+        </div>
+        <div class="field-row" style="margin-bottom:0;">
+          <div class="field-label"><span class="field-badge">時間</span><span class="field-name">通知したい時間</span></div>
+          <div class="time-select-row">
+            <select id="f-remind-hour"><option value="">--</option></select>
+            <span class="time-select-unit">時</span>
+            <select id="f-remind-minute"><option value="">--</option></select>
+            <span class="time-select-unit">分</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px; padding-bottom:8px;">
+      <button class="btn btn-gold" onclick="itteSaveMemo()">保存して今日を締める</button>
+    </div>
+    <div style="margin-top:10px;">
+      <button class="btn btn-outline" onclick="itteClearForm()">クリア</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- 履歴 -->
+<div id="screen-history" class="itte-screen">
+  <div class="screen-header">
+    <div class="screen-title">履歴</div>
+    <div class="screen-sub" id="history-sub">過去の現場メモ一覧</div>
+  </div>
+  <div id="history-content"></div>
+</div>
+
+<!-- 設定 -->
+<div id="screen-settings" class="itte-screen">
+  <div class="screen-header">
+    <div class="screen-title">設定</div>
+    <div class="screen-sub">毎朝の型を決める</div>
+  </div>
+  <div class="form-wrap">
+
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-badge">モード</span>
+        <span class="field-name">使い方を選ぶ</span>
+      </div>
+      <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px; line-height:1.7;">
+        入力画面の文言が切り替わります。<br>保存済みメモは消えません。
+      </p>
+      <div style="display:flex; gap:10px;">
+        <button id="mode-btn-genba" class="btn" style="flex:1; padding:14px; font-size:13px;"
+          onclick="setMode('genba')">
+          🔨 現場モード
+        </button>
+        <button id="mode-btn-work" class="btn" style="flex:1; padding:14px; font-size:13px;"
+          onclick="setMode('work')">
+          💼 仕事モード
+        </button>
+      </div>
+      <p id="mode-current" style="font-size:11px; color:var(--gold-dim); margin-top:10px; text-align:center; letter-spacing:0.08em;"></p>
+    </div>
+
+    <div class="divider"><span class="divider-text" id="routine-divider-text">始業前ルーティン</span></div>
+
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-badge">ルーティン</span>
+        <span class="field-name" id="routine-field-name">始業前ルーティンメモ</span>
+      </div>
+      <p style="font-size:12px; color:var(--text-dim); margin-bottom:10px; line-height:1.9;">
+        仕事を始める前に、気持ちと身体を仕事モードへ切り替えるためのルーティンを作ってみるのがおすすめです。<br><br>
+        下のルーティンは一例です。自分の仕事・職場・生活に合わせて、使いやすい順番に変更してください。<br><br>
+        <span style="color:var(--text-faint);">ルーティンが必要ない場合は、空欄のままでもOKです。</span>
+      </p>
+      <textarea id="s-routine" class="tall" rows="10" placeholder="例）
+1. トイレ掃除・水撒き
+2. コーヒー
+3. ストレッチ
+4. 仕事用アファ確認
+5. 今日の一手確認
+6. 仕事開始"></textarea>
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-gold" onclick="saveRoutine()">ルーティンを保存</button>
+    </div>
+
+    <div class="divider"><span class="divider-text">バックアップ</span></div>
+
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-badge">保存</span>
+        <span class="field-name">データのバックアップと復元</span>
+      </div>
+      <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px; line-height:1.7;">
+        ブラウザのデータ削除や機種変更に備えて、定期的にバックアップしてください。
+      </p>
+      <button class="btn btn-outline" style="margin-bottom:10px;" onclick="exportData()">📥 メモをバックアップ</button>
+      <label class="btn btn-outline" style="display:block; text-align:center; cursor:pointer; padding:16px;">
+        📤 バックアップを復元
+        <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(event)">
+      </label>
+    </div>
+  </div>
+</div>
+
+<!-- 日付で見る -->
+<div id="screen-calendar" class="itte-screen">
+  <div class="screen-header">
+    <div class="screen-title">日付で見る</div>
+    <div class="screen-sub">あの日、何を決めて動いたか</div>
+  </div>
+  <div class="cal-nav">
+    <button class="cal-nav-btn" onclick="calPrevMonth()">←</button>
+    <span class="cal-month" id="cal-month-label"></span>
+    <button class="cal-nav-btn" onclick="calNextMonth()">→</button>
+  </div>
+  <div class="cal-grid">
+    <div class="cal-weekdays">
+      <div class="cal-wd">日</div>
+      <div class="cal-wd">月</div>
+      <div class="cal-wd">火</div>
+      <div class="cal-wd">水</div>
+      <div class="cal-wd">木</div>
+      <div class="cal-wd">金</div>
+      <div class="cal-wd">土</div>
+    </div>
+    <div class="cal-days" id="cal-days"></div>
+  </div>
+  <div class="cal-detail" id="cal-detail" style="display:none;"></div>
+</div>
+
+<!-- ── NAV ── -->
+<nav id="app-nav">
+  <button class="nav-btn active" data-screen="morning" onclick="navigate('morning', this)">
+    <span class="icon" id="nav-morning-icon">📝</span>朝に読む
+  </button>
+  <button class="nav-btn" data-screen="input" onclick="navigate('input', this)">
+    <span class="icon">✏</span>入力
+  </button>
+  <button class="nav-btn" data-screen="calendar" onclick="navigate('calendar', this)">
+    <span class="icon">📅</span>日付で見る
+  </button>
+  <button class="nav-btn" data-screen="history" onclick="navigate('history', this)">
+    <span class="icon">📋</span>履歴
+  </button>
+  <button class="nav-btn" data-screen="settings" onclick="navigate('settings', this)">
+    <span class="icon">⚙</span>設定
+  </button>
+</nav>
+
+<!-- ── ONBOARDING ── -->
+<div id="onboarding-overlay">
+  <div class="onboarding-box">
+    <div class="onboarding-head">
+      <div class="onboarding-title">明日の一手へようこそ</div>
+      <div class="onboarding-sub">仕事終わりの10秒で、明日の迷いをなくす</div>
+    </div>
+    <div class="onboarding-body">
+      <p>このアプリは、仕事終わりに明日の最初の一手を決めて、翌朝の迷いを減らすためのメモアプリです。</p>
+      <div class="onboarding-steps">
+        <div class="onboarding-step">
+          <div class="onboarding-num">1</div>
+          <div class="onboarding-step-text">仕事終わりに、明日の一手を入力する</div>
+        </div>
+        <div class="onboarding-step">
+          <div class="onboarding-num">2</div>
+          <div class="onboarding-step-text">朝に読む画面で、今日の入り方を確認する</div>
+        </div>
+        <div class="onboarding-step">
+          <div class="onboarding-num">3</div>
+          <div class="onboarding-step-text">予定が変わったら、一手を組み直す</div>
+        </div>
+        <div class="onboarding-step">
+          <div class="onboarding-num">4</div>
+          <div class="onboarding-step-text">忘れたら困る内容だけ、重要リマインドにする</div>
+        </div>
+      </div>
+      <p style="margin-top:14px; font-size:12px;">現場仕事の人は「現場モード」。それ以外は「仕事モード」。設定画面からいつでも切り替えできます。</p>
+    </div>
+    <div class="onboarding-footer">
+      <button class="btn btn-gold" onclick="closeOnboarding()">はじめる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── REORGANIZE MODAL ── -->
+<div id="reorg-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:200; overflow-y:auto; padding:20px 0;">
+  <div style="background:var(--bg2); margin:0 12px; border:1px solid var(--border-gold); border-radius:8px; overflow:hidden;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 18px; border-bottom:1px solid var(--border-gold); background:linear-gradient(135deg,#1a1408,#1a1a1a);">
+      <span style="font-size:15px; color:var(--gold); font-weight:700; letter-spacing:0.08em;">⚡ 一手を組み直す</span>
+      <button onclick="closeReorganize()" style="background:none; border:none; color:var(--text-dim); font-size:22px; cursor:pointer; padding:2px 6px;">✕</button>
+    </div>
+    <div style="padding:18px 16px 8px;">
+      <p style="font-size:13px; color:var(--text-dim); line-height:1.9; margin-bottom:18px; padding:12px 14px; background:var(--bg3); border-radius:4px; border-left:3px solid var(--gold-dim);">
+        軽く深呼吸して、リラックスしましょう。<br>次の一手だけ決め直せば大丈夫です。
+      </p>
+      <input type="hidden" id="reorg-id">
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">理由</span><span class="field-name">何が変わったか</span></div>
+        <input type="text" id="reorg-reason" placeholder="材料未着・天候・指示変更など">
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">次の一手</span><span class="field-name">朝イチを置き直す</span></div>
+        <input type="text" id="reorg-first" placeholder="次に迷わず動くための一手">
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">注意</span><span class="field-name">注意点を更新</span></div>
+        <textarea id="reorg-caution" rows="2" placeholder="新しい注意点があれば"></textarea>
+      </div>
+    </div>
+    <div style="padding:8px 16px 16px; display:flex; gap:10px;">
+      <button class="btn btn-gold" style="flex:2" onclick="saveReorganize()">組み直して動く</button>
+      <button class="btn btn-outline" style="flex:1" onclick="closeReorganize()">戻る</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── EDIT MODAL ── -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">メモを編集</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id">
+
+      <div class="field-row-2col">
+        <div>
+          <div class="field-label"><span class="field-badge" id="e-badge-site">現場</span></div>
+          <input type="text" id="e-site" placeholder="現場名">
+        </div>
+        <div>
+          <div class="field-label"><span class="field-badge">日付</span></div>
+          <input type="date" id="e-date">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">明日</span></div>
+        <textarea id="e-main" rows="2"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge" id="e-badge-start">入</span></div>
+        <input type="text" id="e-start">
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">注</span></div>
+        <textarea id="e-caution" rows="2"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge" id="e-badge-items">物</span></div>
+        <textarea id="e-items" rows="2"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">感</span></div>
+        <input type="text" id="e-gratitude">
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">朝イチ</span></div>
+        <input type="text" id="e-first">
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">メモ</span></div>
+        <textarea id="e-note" rows="2"></textarea>
+      </div>
+      <div class="field-row" style="border-top:1px solid var(--border-gold); padding-top:14px; margin-top:4px;">
+        <label class="remind-toggle">
+          <input type="checkbox" id="e-important" onchange="toggleEditRemindFields()">
+          <span class="remind-toggle-label" id="e-remind-toggle-label">忘れ防止にする</span>
+        </label>
+        <div id="e-remind-fields" style="display:none;" class="remind-fields">
+          <div class="field-row" style="margin-bottom:10px;">
+            <div class="field-label"><span class="field-badge" id="e-remind-badge">忘れ防止</span></div>
+            <input type="text" id="e-remind-text" placeholder="例：予備バッテリーを忘れない">
+          </div>
+          <div class="field-row" style="margin-bottom:0;">
+            <div class="field-label"><span class="field-badge">時間</span></div>
+            <div class="time-select-row">
+              <select id="e-remind-hour"><option value="">--</option></select>
+              <span class="time-select-unit">時</span>
+              <select id="e-remind-minute"><option value="">--</option></select>
+              <span class="time-select-unit">分</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gold" style="flex:2" onclick="updateMemo()">更新する</button>
+      <button class="btn btn-danger" style="flex:1" onclick="deleteMemoFromModal()">削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="itte-toast"></div>
+
+
+  <nav class="org-nav">
+    <a href="#drop">Drop</a>
+    <a href="#tomorrow">一手</a>
+    <a href="#shopping">買う物</a>
+    <a href="#organize">整理</a>
+    <a href="#storage">保存先</a>
+  </nav>
+</div>
+
+<!-- ════════ ② SHOPPING ════════ -->
+<div id="screen-shopping" class="screen">
+  <div class="shop-header">
+    <div class="shop-header-title">買う物だけ</div>
+    <div class="shop-header-sub">ここにある物だけ買う。</div>
+  </div>
+  <div class="shop-main">
+    <div class="shop-count" id="shop-count"></div>
+    <div id="shop-empty">
+      買う物はありません。<br>
+      Dropから「買うもの、〇〇」で<br>
+      追加できる。
+    </div>
+    <div id="shopping-list"></div>
+
+    <!-- 購入済みエリア -->
+    <div id="purchased-area" style="display:none;">
+      <div class="purchased-toggle" onclick="togglePurchased()">
+        <span id="purchased-toggle-label">購入済み</span>
+        <span class="purchased-arrow" id="purchased-arrow">▸</span>
+      </div>
+      <div id="purchased-list" style="display:none;"></div>
+    </div>
+  </div>
+  <div class="shop-footer">ここに無い物は、今日は買わない。</div>
+
+  <nav class="org-nav">
+    <a href="#drop">Drop</a>
+    <a href="#tomorrow">一手</a>
+    <a href="#shopping">買う物</a>
+    <a href="#organize">整理</a>
+    <a href="#storage">保存先</a>
+  </nav>
+</div>
+
+<!-- ════════ ③ ORGANIZE ════════ -->
+<div id="screen-organize" class="screen">
+  <header class="org-header">
+    <div class="org-header-title">ひらめき箱</div>
+    <div class="org-header-sub">思いつきを逃がさず、あとでAIに整理してもらうための小さな箱。</div>
+  </header>
+
+  <div class="org-main">
+    <div class="input-area">
+      <textarea id="memo-input"
+        placeholder="思いついたことをそのまま入れる。音声入力でもOK。"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      ></textarea>
+      <button class="btn-save" onclick="saveMemo()">放り込む</button>
+    </div>
+
+    <div id="toast"></div>
+    <hr class="section-divider">
+
+    <div class="search-row">
+      <input type="search" id="search-input" placeholder="メモを検索" oninput="renderList()" autocomplete="off">
+    </div>
+
+    <div class="action-row">
+      <button class="btn-action-gold" onclick="copyAll()">全部コピー</button>
+      <button class="btn-action-select" onclick="copySelected()">選択コピー</button>
+      <button class="btn-action-crimson" onclick="copyAllAI()">全部AI整理</button>
+      <button class="btn-action-crimson" onclick="copySelectedAI()">選択AI整理</button>
+    </div>
+
+    <div class="list-header">
+      <span class="list-label">未整理リスト</span>
+      <span id="memo-count"></span>
+    </div>
+
+    <div id="org-empty">まだ何もない。<br>最初のひらめきを放り込んでみて。</div>
+    <div id="memo-list"></div>
+  </div>
+
+  <nav class="org-nav">
+    <a href="#drop">Drop</a>
+    <a href="#tomorrow">一手</a>
+    <a href="#shopping">買う物</a>
+    <a href="#organize">整理</a>
+    <a href="#storage">保存先</a>
+  </nav>
+</div>
+
+<!-- ════════ ④ STORAGE ════════ -->
+<div id="screen-storage" class="screen">
+  <div class="storage-header">
+    <div class="storage-title">保存先</div>
+    <div class="storage-sub">どこに何が入ってるか確認する画面。</div>
+  </div>
+
+  <div class="storage-main">
+    <!-- サマリー行 -->
+    <div class="storage-summary" id="storage-summary"></div>
+
+    <!-- コピー・削除 -->
+    <div class="storage-action-row">
+      <button class="btn-action-gold" onclick="copyStorageAll()">全部コピー</button>
+      <button class="btn-action-select" onclick="copyStorageSelected()">選択コピー</button>
+      <button class="btn-action-crimson" onclick="requestStorageDelete()">選択削除</button>
+    </div>
+
+    <!-- カテゴリ別セクション -->
+    <div id="storage-sections"></div>
+  </div>
+
+  <nav class="org-nav">
+    <a href="#drop">Drop</a>
+    <a href="#tomorrow">一手</a>
+    <a href="#shopping">買う物</a>
+    <a href="#organize">整理</a>
+    <a href="#storage">保存先</a>
+  </nav>
+</div>
+
+<!-- storage 選択削除確認 -->
+<div id="storage-confirm-overlay">
+  <div class="confirm-box">
+    <p>選択したメモを削除しますか？<br>この操作は戻せません。</p>
+    <div class="confirm-btns">
+      <button class="btn-confirm-cancel" onclick="closeStorageConfirm()">キャンセル</button>
+      <button class="btn-confirm-ok" onclick="confirmStorageDelete()">削除する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 削除確認 -->
+<div id="confirm-overlay">
+  <div class="confirm-box">
+    <p>このひらめきを削除しますか？</p>
+    <div class="confirm-btns">
+      <button class="btn-confirm-cancel" onclick="closeConfirm()">キャンセル</button>
+      <button class="btn-confirm-ok" onclick="confirmDelete()">削除する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   SHARED STATE
+════════════════════════════════════════ */
+const STORAGE_KEY = 'hirameki_memos_v1';
+
+function loadMemos() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const data = raw ? JSON.parse(raw) : [];
+    return Array.isArray(data) ? data : [];
+  } catch(e) { return []; }
+}
+
+function saveMemos(memos) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(memos));
+  } catch(e) {}
+}
+
+/* ════════════════════════════════════════
+   ROUTER
+════════════════════════════════════════ */
+function route() {
+  const hash = location.hash.replace('#', '') || 'drop';
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
+  if (hash === 'drop') {
+    document.getElementById('screen-drop').classList.add('active');
+    initDrop();
+  } else if (hash === 'tomorrow') {
+    document.getElementById('screen-tomorrow').classList.add('active');
+    renderTomorrow();
+  } else if (hash === 'shopping') {
+    document.getElementById('screen-shopping').classList.add('active');
+    renderShopping();
+  } else if (hash === 'storage') {
+    document.getElementById('screen-storage').classList.add('active');
+    renderStorage();
+  } else {
+    document.getElementById('screen-organize').classList.add('active');
+    initOrganize();
+  }
+}
+
+window.addEventListener('hashchange', route);
+window.addEventListener('DOMContentLoaded', route);
+
+/* ════════════════════════════════════════
+   ① DROP
+════════════════════════════════════════ */
+const SHOPPING_WORDS = [
+  '買う物', '買うもの',
+  '買い物', '買い物メモ',
+  '買っとく', '買っとかな', '買っておく', '買っておかな',
+  'コーナンで', 'コーナン',
+  'ホームセンターで', 'ホームセンター',
+  '材料買う', '材料',
+  '道具買う', '道具',
+  '消耗品',
+];
+
+const TOMORROW_WORDS = [
+  '明日の一手', '明日やる', '明日',
+  '一手',
+];
+
+let dropAutoSaveTimer = null;
+let dropLastSaved = '';
+
+function classifyDrop(text) {
+  for (const w of SHOPPING_WORDS) {
+    if (text.startsWith(w)) return 'shopping';
+  }
+  for (const w of TOMORROW_WORDS) {
+    if (text.startsWith(w)) return 'tomorrow';
+  }
+  return 'hirameki';
+}
+
+function stripPrefix(text) {
+  for (const w of [...SHOPPING_WORDS, ...TOMORROW_WORDS]) {
+    if (text.startsWith(w)) {
+      return text.slice(w.length).replace(/^[、,\s]+/, '').trim();
+    }
+  }
+  return text;
+}
+
+function initDrop() {
+  // フィードバック表示をリセット
+  document.getElementById('drop-feedback').classList.remove('show');
+  document.getElementById('screen-drop').classList.remove('feedback-active');
+  document.getElementById('fail-overlay').classList.remove('show');
+
+  const input = document.getElementById('drop-input');
+  input.value = '';
+  dropLastSaved = '';
+  clearTimeout(dropAutoSaveTimer);
+
+  setTimeout(() => input.focus(), 80);
+
+  input.oninput = () => {
+    clearTimeout(dropAutoSaveTimer);
+    dropAutoSaveTimer = setTimeout(() => {
+      const text = input.value.trim();
+      if (text && text !== dropLastSaved) dropSave();
+    }, 2000);
+  };
+}
+
+function dropSave() {
+  clearTimeout(dropAutoSaveTimer);
+
+  const input = document.getElementById('drop-input');
+  const rawText = input.value.trim();
+  if (!rawText) return;
+  if (rawText === dropLastSaved) return;
+
+  const category = classifyDrop(rawText);
+  const body = (category === 'shopping' || category === 'tomorrow') ? stripPrefix(rawText) : rawText;
+  if (!body) return;
+
+  const memo = {
+    id: Date.now().toString(),
+    body,
+    created_at: new Date().toISOString(),
+    category,
+    source: 'daimon_drop',
+    mode: 'work_focus',
+    completed: false,
+  };
+
+  try {
+    const memos = loadMemos();
+    memos.unshift(memo);
+    saveMemos(memos);
+  } catch(e) {
+    showFail();
+    return;
+  }
+
+  dropLastSaved = rawText;
+  input.value = '';
+
+  if (navigator.vibrate) navigator.vibrate(50);
+  showCheck();
+}
+
+function showCheck() {
+  const screen = document.getElementById('screen-drop');
+  const fb = document.getElementById('drop-feedback');
+
+  // アニメーション再実行のためのリセット
+  fb.classList.remove('show');
+  void fb.offsetWidth;
+
+  screen.classList.add('feedback-active');
+  fb.classList.add('show');
+
+  // CSS側で5秒（1.2sイン → 2.4sキープ → 1.4sアウト）を完結させ、
+  // JSは終了後の片付けだけ行う
+  setTimeout(() => {
+    fb.classList.remove('show');
+    screen.classList.remove('feedback-active');
+    dropLastSaved = '';
+    const input = document.getElementById('drop-input');
+    input.value = '';
+    input.focus();
+  }, 5000);
+}
+
+function showFail() {
+  const overlay = document.getElementById('fail-overlay');
+  overlay.classList.add('show');
+  setTimeout(() => overlay.classList.remove('show'), 1000);
+}
+
+/* ════════════════════════════════════════
+   ② SHOPPING
+════════════════════════════════════════ */
+let purchasedOpen = false;
+
+function renderShopping() {
+  const memos = loadMemos();
+  const items = memos.filter(m => m.category === 'shopping' && !m.completed);
+  const purchased = memos.filter(m => m.category === 'shopping' && m.completed);
+
+  const list = document.getElementById('shopping-list');
+  const empty = document.getElementById('shop-empty');
+  const count = document.getElementById('shop-count');
+
+  // ─ 未購入エリア ─
+  if (items.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    count.textContent = '';
+  } else {
+    empty.style.display = 'none';
+    count.textContent = `${items.length}件`;
+
+    list.innerHTML = items.map(item => `
+      <div class="item-row" data-id="${item.id}" onclick="checkItem('${item.id}')">
+        <div class="item-check">
+          <span class="item-check-inner">✓</span>
+        </div>
+        <div class="item-body">${escapeHtml(item.body || item.text || '')}</div>
+        <div class="item-date">${formatDateShort(item.created_at || item.createdAt)}</div>
+      </div>
+    `).join('');
+  }
+
+  // ─ 購入済みエリア ─
+  const area = document.getElementById('purchased-area');
+  const pList = document.getElementById('purchased-list');
+  const pLabel = document.getElementById('purchased-toggle-label');
+  const pArrow = document.getElementById('purchased-arrow');
+
+  if (purchased.length === 0) {
+    area.style.display = 'none';
+    return;
+  }
+
+  area.style.display = 'block';
+  pLabel.textContent = `購入済み（${purchased.length}件）`;
+  pList.style.display = purchasedOpen ? 'block' : 'none';
+  pArrow.classList.toggle('open', purchasedOpen);
+
+  pList.innerHTML = purchased.map(item => `
+    <div class="purchased-item" onclick="uncheckItem('${item.id}')">
+      <div class="purchased-check">✓</div>
+      <div class="purchased-body">${escapeHtml(item.body || item.text || '')}</div>
+      <div class="purchased-date">${formatDateShort(item.created_at || item.createdAt)}</div>
+    </div>
+  `).join('');
+}
+
+function togglePurchased() {
+  purchasedOpen = !purchasedOpen;
+  renderShopping();
+}
+
+function checkItem(id) {
+  const row = document.querySelector(`.item-row[data-id="${id}"]`);
+  if (!row) return;
+  row.querySelector('.item-check-inner').style.display = 'block';
+  row.classList.add('checking');
+
+  setTimeout(() => {
+    const memos = loadMemos();
+    const idx = memos.findIndex(m => m.id === id);
+    if (idx !== -1) {
+      memos[idx].completed = true;
+      saveMemos(memos);
+    }
+    renderShopping();
+  }, 350);
+}
+
+/* 購入済み → タップで未購入に戻す */
+function uncheckItem(id) {
+  const memos = loadMemos();
+  const idx = memos.findIndex(m => m.id === id);
+  if (idx !== -1) {
+    memos[idx].completed = false;
+    saveMemos(memos);
+  }
+  renderShopping();
+}
+
+/* ════════════════════════════════════════
+   ⑤ TOMORROW（一手） — iframe合体
+════════════════════════════════════════ */
+function renderTomorrow() {
+  // 明日の一手（移植版）の朝画面を再描画
+  if (typeof renderMorning === 'function') renderMorning();
+}
+
+/* ════════════════════════════════════════
+   ④ STORAGE
+════════════════════════════════════════ */
+let storageSelectedIds = new Set();
+
+const CATEGORY_LABELS = {
+  shopping: '買う物',
+  hirameki: 'ひらめき',
+  tomorrow: '一手',
+};
+const SOURCE_LABELS = {
+  daimon_drop: 'Drop',
+  organize: '整理画面',
+  index: '整理画面',
+  tomorrow: '一手画面',
+};
+
+function renderStorage() {
+  const all = loadMemos();
+
+  // 分類
+  const hirameki  = all.filter(m => m.category === 'hirameki' && !m.completed);
+  const shopping  = all.filter(m => m.category === 'shopping' && !m.completed);
+  const tomorrow  = all.filter(m => m.category === 'tomorrow' && !m.completed);
+  const completed = all.filter(m => m.completed);
+  const fromDrop  = all.filter(m => m.source === 'daimon_drop');
+
+  // サマリーチップ
+  const summary = document.getElementById('storage-summary');
+  summary.innerHTML = [
+    { num: all.length,       label: '全件' },
+    { num: hirameki.length,  label: 'ひらめき' },
+    { num: tomorrow.length,  label: '一手' },
+    { num: shopping.length,  label: '買う物' },
+    { num: completed.length, label: '完了済み' },
+  ].map(c => `
+    <div class="summary-chip">
+      <div class="summary-chip-num">${c.num}</div>
+      <div class="summary-chip-label">${c.label}</div>
+    </div>
+  `).join('');
+
+  // セクション
+  const sections = [
+    { title: 'ひらめき（未整理）', items: hirameki },
+    { title: '一手（未実行）',     items: tomorrow },
+    { title: '買う物（未購入）',   items: shopping },
+    { title: '完了済み',           items: completed },
+  ];
+
+  const sectEl = document.getElementById('storage-sections');
+  sectEl.innerHTML = sections.map(s => `
+    <div class="storage-section">
+      <div class="storage-section-title">${s.title}（${s.items.length}件）</div>
+      ${s.items.length === 0
+        ? '<div class="storage-empty">なし</div>'
+        : s.items.map(m => {
+            const isSel = storageSelectedIds.has(m.id);
+            return `
+            <div class="storage-item${isSel ? ' selected' : ''}" onclick="toggleStorageSelect('${m.id}')">
+              <span class="storage-select-check">${isSel ? '✓' : ''}</span>
+              <div class="storage-item-content">
+                ${escapeHtml(m.body || m.text || '')}
+                <div class="storage-item-date">${formatDate(m.created_at || m.createdAt)}　${m.source ? '/ ' + m.source : ''}</div>
+              </div>
+            </div>
+          `}).join('')
+      }
+    </div>
+  `).join('');
+}
+
+function toggleStorageSelect(id) {
+  if (storageSelectedIds.has(id)) {
+    storageSelectedIds.delete(id);
+  } else {
+    storageSelectedIds.add(id);
+  }
+  renderStorage();
+}
+
+/* ─── storage コピー形式（プロンプトなし・メタ情報入り） ─── */
+function buildStorageLines(list) {
+  return list.map((m, i) => {
+    const cat = CATEGORY_LABELS[m.category] || m.category || '不明';
+    const src = SOURCE_LABELS[m.source] || m.source || '不明';
+    const state = m.completed ? '完了済み' : '未完了';
+    return `${i + 1}. ${m.body || m.text || ''}\n   分類：${cat}\n   保存元：${src}\n   状態：${state}\n   保存日時：${formatDate(m.created_at || m.createdAt)}`;
+  }).join('\n\n');
+}
+
+/* ─── storage 全部コピー ─── */
+function copyStorageAll() {
+  const all = loadMemos();
+  if (all.length === 0) {
+    showStorageToast('保存データがまだない。');
+    return;
+  }
+  copyText(buildStorageLines(all), '全保存データをコピーしました。');
+}
+
+/* ─── storage 選択コピー ─── */
+function copyStorageSelected() {
+  if (storageSelectedIds.size === 0) {
+    showStorageToast('メモを選択してください。');
+    return;
+  }
+  const all = loadMemos();
+  const selected = all.filter(m => storageSelectedIds.has(m.id));
+  copyText(buildStorageLines(selected), '選択メモをコピーしました。');
+}
+
+/* ─── storage 選択削除 ─── */
+function requestStorageDelete() {
+  if (storageSelectedIds.size === 0) {
+    showStorageToast('削除するメモを選択してください。');
+    return;
+  }
+  document.getElementById('storage-confirm-overlay').classList.add('show');
+}
+
+function closeStorageConfirm() {
+  document.getElementById('storage-confirm-overlay').classList.remove('show');
+}
+
+function confirmStorageDelete() {
+  const all = loadMemos();
+  const remaining = all.filter(m => !storageSelectedIds.has(m.id));
+  saveMemos(remaining);
+  storageSelectedIds.clear();
+  closeStorageConfirm();
+  renderStorage();
+  showStorageToast('選択したメモを削除しました。');
+}
+
+// storage画面用トースト（organize側のtoastが無い画面でも通知できるように）
+function showStorageToast(msg) {
+  // organize側のtoast要素を流用できないため、簡易alert風オーバーレイの代わりに
+  // check-overlayの仕組みを使わず、シンプルにコンソール + バイブで代替
+  if (navigator.vibrate) navigator.vibrate(30);
+  // 一時的なトースト要素を生成
+  let el = document.getElementById('storage-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'storage-toast';
+    el.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#181818;border:1px solid #7a5e1e;border-radius:6px;color:#9a8868;font-size:13px;padding:10px 18px;z-index:1000;letter-spacing:0.06em;white-space:nowrap;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 2400);
+}
+
+/* ════════════════════════════════════════
+   ③ ORGANIZE
+════════════════════════════════════════ */
+let orgMemos = [];
+let deleteTargetId = null;
+let toastTimer = null;
+let selectedIds = new Set();
+
+const SAVE_MESSAGES = [
+  '保存した。整理はあとでいい。',
+  'ひらめき回収。',
+  'まず残せた。それでOK。',
+  '逃がさなかった。',
+  '保存完了。考えるのは後でいい。',
+];
+
+function initOrganize() {
+  try {
+    orgMemos = loadMemos().filter(m => m.category !== 'shopping' && m.category !== 'tomorrow');
+  } catch(e) { orgMemos = []; }
+  renderList();
+  // フォーカスはOrganizeでは任意
+}
+
+function saveMemo() {
+  const input = document.getElementById('memo-input');
+  const text = input.value.trim();
+  if (!text) { showToast('何か入力してから放り込んで。'); return; }
+
+  const memo = {
+    id: Date.now().toString(),
+    body: text,
+    created_at: new Date().toISOString(),
+    category: 'hirameki',
+    source: 'organize',
+    completed: false,
+  };
+
+  orgMemos.unshift(memo);
+  saveMemos(orgMemos);
+  input.value = '';
+  renderList();
+  showToast(SAVE_MESSAGES[Math.floor(Math.random() * SAVE_MESSAGES.length)]);
+  input.focus();
+}
+
+function renderList() {
+  // 最新データをlocalStorageから取得（Drop経由で保存されたものも反映）
+  // shopping は #shopping 画面専用なので organize では除外
+  orgMemos = loadMemos().filter(m => m.category !== 'shopping' && m.category !== 'tomorrow');
+
+  const query = document.getElementById('search-input').value.trim().toLowerCase();
+  const filtered = query
+    ? orgMemos.filter(m => (m.body||m.text||'').toLowerCase().includes(query))
+    : orgMemos;
+
+  const list = document.getElementById('memo-list');
+  const empty = document.getElementById('org-empty');
+  const count = document.getElementById('memo-count');
+
+  count.textContent = orgMemos.length > 0
+    ? `${filtered.length}件${query ? ' / 全' + orgMemos.length + '件' : ''}`
+    : '';
+
+  if (filtered.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    empty.innerHTML = query && orgMemos.length > 0
+      ? `「${query}」は見つからなかった。`
+      : 'まだ何もない。<br>最初のひらめきを放り込んでみて。';
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  list.innerHTML = filtered.map(m => {
+    const rawText = m.body || m.text || '';
+    const displayText = query
+      ? escapeHtml(rawText).replace(
+          new RegExp(escapeRegex(escapeHtml(query)), 'gi'),
+          s => `<mark>${s}</mark>`
+        )
+      : escapeHtml(rawText);
+    const isSelected = selectedIds.has(m.id);
+
+    return `
+      <div class="memo-card${isSelected ? ' selected' : ''}" data-id="${m.id}">
+        <div class="memo-card-top">
+          <span class="memo-select-check" onclick="toggleSelect('${m.id}')">${isSelected ? '✓' : ''}</span>
+          <div class="memo-text" style="flex:1">${displayText}</div>
+        </div>
+        <div class="memo-footer">
+          <span class="memo-date">${formatDate(m.created_at || m.createdAt)}</span>
+          <div class="memo-actions">
+            <button class="btn-copy" onclick="copyMemo('${m.id}')">コピー</button>
+            <button class="btn-del" onclick="requestDelete('${m.id}')">削除</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleSelect(id) {
+  if (selectedIds.has(id)) {
+    selectedIds.delete(id);
+  } else {
+    selectedIds.add(id);
+  }
+  renderList();
+}
+
+/* ─── AI整理プロンプト生成 ─── */
+function buildAIPrompt(memoLines) {
+  return `以下のDAIMONメモを整理してください。
+
+目的：
+・仕事に使えるもの
+・副業や商品アイデアに使えるもの
+・発信ネタに使えるもの
+・販売コピーに使えるもの
+・AIへの作業依頼にできるもの
+・今すぐやる一手
+・後回しでいいもの
+
+に分けて整理してください。
+
+その後、次の一手を1つだけ提案してください。
+
+【ひらめきメモ】
+${memoLines}`;
+}
+
+function buildMemoLinesWithDate(list) {
+  return list.map((m, i) =>
+    `${i + 1}. ${m.body || m.text || ''}\n   保存日時：${formatDate(m.created_at || m.createdAt)}`
+  ).join('\n\n');
+}
+
+function buildMemoLinesPlain(list) {
+  return list.map((m, i) => `${i + 1}. ${m.body || m.text || ''}`).join('\n');
+}
+
+/* ─── ① 全部コピー（普通・プロンプトなし） ─── */
+function copyAll() {
+  if (orgMemos.length === 0) { showToast('メモがまだない。'); return; }
+  copyText(buildMemoLinesPlain(orgMemos), '全メモをコピーした。');
+}
+
+/* ─── ② 選択コピー（普通・プロンプトなし） ─── */
+function copySelected() {
+  if (selectedIds.size === 0) {
+    showToast('メモを選択してください。');
+    return;
+  }
+  const selected = orgMemos.filter(m => selectedIds.has(m.id));
+  copyText(buildMemoLinesPlain(selected), '選択メモをコピーしました。');
+}
+
+/* ─── ③ 全部AI整理（プロンプト付き） ─── */
+function copyAllAI() {
+  if (orgMemos.length === 0) { showToast('メモがまだない。'); return; }
+  copyText(buildAIPrompt(buildMemoLinesWithDate(orgMemos)), 'AIに貼って整理できる形でコピーしました。');
+}
+
+/* ─── ④ 選択AI整理（プロンプト付き） ─── */
+function copySelectedAI() {
+  if (selectedIds.size === 0) {
+    showToast('メモを選択してください。');
+    return;
+  }
+  const selected = orgMemos.filter(m => selectedIds.has(m.id));
+  copyText(buildAIPrompt(buildMemoLinesWithDate(selected)), '選択メモをAI整理用にコピーしました。');
+}
+
+function copyMemo(id) {
+  const memo = orgMemos.find(m => m.id === id);
+  if (!memo) return;
+  copyText(memo.body || memo.text || '', 'コピーしました。AIに貼って整理できます。');
+}
+
+function requestDelete(id) {
+  deleteTargetId = id;
+  document.getElementById('confirm-overlay').classList.add('show');
+}
+function closeConfirm() {
+  deleteTargetId = null;
+  document.getElementById('confirm-overlay').classList.remove('show');
+}
+function confirmDelete() {
+  if (!deleteTargetId) return;
+  orgMemos = orgMemos.filter(m => m.id !== deleteTargetId);
+  selectedIds.delete(deleteTargetId);
+  saveMemos(orgMemos);
+  renderList();
+  closeConfirm();
+  showToast('削除した。');
+}
+
+/* ════════════════════════════════════════
+   SHARED UTILS
+════════════════════════════════════════ */
+function copyText(text, successMsg) {
+  // 現在の画面に応じてトーストを切り替える
+  const notify = (msg) => {
+    const isStorage = document.getElementById('screen-storage').classList.contains('active');
+    if (isStorage) showStorageToast(msg);
+    else showToast(msg);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(() => notify(successMsg))
+      .catch(() => fallbackCopy(text, successMsg));
+  } else {
+    fallbackCopy(text, successMsg);
+  }
+}
+
+function fallbackCopy(text, successMsg) {
+  const isStorage = document.getElementById('screen-storage').classList.contains('active');
+  const notify = (msg) => isStorage ? showStorageToast(msg) : showToast(msg);
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
+    notify(successMsg);
+  } catch(e) {
+    notify('コピーできなかった。手動でコピーして。');
+  }
+  document.body.removeChild(ta);
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2800);
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const Y = d.getFullYear();
+  const M = String(d.getMonth()+1).padStart(2,'0');
+  const D = String(d.getDate()).padStart(2,'0');
+  const h = String(d.getHours()).padStart(2,'0');
+  const m = String(d.getMinutes()).padStart(2,'0');
+  return `${Y}/${M}/${D} ${h}:${m}`;
+}
+
+function formatDateShort(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const M = String(d.getMonth()+1).padStart(2,'0');
+  const D = String(d.getDate()).padStart(2,'0');
+  const h = String(d.getHours()).padStart(2,'0');
+  const m = String(d.getMinutes()).padStart(2,'0');
+  return `${M}/${D} ${h}:${m}`;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/* ─── KEYBOARD (Organize) ─── */
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') saveMemo();
+  if (e.key === 'Escape') closeConfirm();
+});
+
+document.getElementById('confirm-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeConfirm();
+});
+
+document.getElementById('storage-confirm-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeStorageConfirm();
+});
+
+/* ─── SERVICE WORKER ─── */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+<script>
+/* ════════ 明日の一手（完全移植）JS ════════ */
+
+/* ─── STORAGE ─── */
+/* DAIMON統合: 一手メモは hirameki_memos_v1 に category:'tomorrow' で保存 */
+function itteLoadMemos() {
+  return loadMemos().filter(m => m.category === 'tomorrow');
+}
+
+function itteSaveMemos(memos) {
+  const others = loadMemos().filter(m => m.category !== 'tomorrow');
+  const normalized = memos.map(m => ({
+    ...m,
+    category: 'tomorrow',
+    body: m.body || m.main || m.site || '',
+    created_at: m.created_at || m.createdAt || new Date().toISOString(),
+    source: m.source || 'itte',
+    completed: m.completed === true,
+  }));
+  saveMemos([...normalized, ...others]);
+}
+
+/* 旧キー genba_memos_v1 からの一回限り移行 */
+(function migrateItte() {
+  try {
+    if (localStorage.getItem('itte_migrated_v1')) return;
+    const old = JSON.parse(localStorage.getItem('genba_memos_v1') || 'null');
+    if (Array.isArray(old) && old.length) {
+      const existing = itteLoadMemos();
+      const existingIds = new Set(existing.map(m => m.id));
+      const merged = [...old.filter(m => !existingIds.has(m.id)), ...existing];
+      itteSaveMemos(merged);
+    }
+    localStorage.setItem('itte_migrated_v1', '1');
+  } catch(e) {}
+})();
+
+/* ─── NAVIGATION ─── */
+function navigate(screenId, btn) {
+  document.querySelectorAll('.itte-screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + screenId).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (screenId === 'morning') renderMorning();
+  if (screenId === 'history') renderHistory();
+  if (screenId === 'settings') { loadRoutineToForm(); applyMode(); }
+  if (screenId === 'calendar') renderCalendar();
+  window.scrollTo(0, 0);
+}
+
+/* ─── FORM HELPERS ─── */
+function val(id) {
+  return (document.getElementById(id).value || '').trim();
+}
+
+function setVal(id, v) {
+  document.getElementById(id).value = v || '';
+}
+
+function itteClearForm() {
+  ['f-site','f-date','f-main','f-start','f-caution','f-items','f-gratitude','f-first','f-note','f-remind-text']
+    .forEach(id => setVal(id, ''));
+  const cb = document.getElementById('f-important');
+  if (cb) cb.checked = false;
+  setRemindTime('f', '');
+  toggleRemindFields();
+  initDate();
+}
+
+function initDate() {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const yyyy = tomorrow.getFullYear();
+  const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const dd = String(tomorrow.getDate()).padStart(2, '0');
+  document.getElementById('f-date').value = `${yyyy}-${mm}-${dd}`;
+}
+
+/* ─── SAVE ─── */
+function itteSaveMemo() {
+  const site = val('f-site');
+  const main = val('f-main');
+  const md = MODES[getMode()];
+  if (!site && !main) {
+    itteShowToast(md.saveError);
+    return;
+  }
+
+  const memo = {
+    id: Date.now().toString(),
+    createdAt: new Date().toISOString(),
+    date: val('f-date'),
+    site: site || (getMode() === 'work' ? '仕事・案件未記入' : '現場名未記入'),
+    main: main,
+    start: val('f-start'),
+    caution: val('f-caution'),
+    items: val('f-items'),
+    gratitude: val('f-gratitude'),
+    first: val('f-first'),
+    note: val('f-note'),
+    important: document.getElementById('f-important').checked,
+    remindText: val('f-remind-text'),
+    remindTime: getRemindTime('f'),
+    // photos: []  ← 将来の写真機能用スロット
+  };
+
+  const memos = itteLoadMemos();
+  memos.unshift(memo);
+  itteSaveMemos(memos);
+
+  itteClearForm();
+  itteShowToast('保存しました。今日もお疲れ様でした。');
+
+  // 朝画面に移動
+  setTimeout(() => {
+    navigate('morning', document.querySelector('[data-screen="morning"]'));
+  }, 900);
+}
+
+/* ─── RENDER MORNING ─── */
+function renderMorning() {
+  const memos = itteLoadMemos();
+  const container = document.getElementById('morning-content');
+  const md = MODES[getMode()];
+
+  if (memos.length === 0) {
+    container.innerHTML = `
+      <div class="no-memo">
+        <div class="no-memo-icon">📝</div>
+        <div class="no-memo-text">${md.noMemoText}</div>
+      </div>`;
+    return;
+  }
+
+  const m = memos[0];
+  const dateStr = itteFormatDate(m.date);
+
+  // 今日の一枚を先頭に
+  let html = buildTodayCard(m);
+
+  // 朝に読む文章の組み立て
+  const lines = [];
+  if (m.site)    lines.push({ label: md.morningLabelSite, text: m.site });
+  if (m.main)    lines.push({ label: md.morningLabelMain, text: m.main });
+  if (m.start)   lines.push({ label: md.morningLabelStart, text: m.start + 'から' });
+  if (m.caution) lines.push({ label: '注意点', text: m.caution });
+  if (m.items)   lines.push({ label: md.morningLabelItems, text: m.items });
+  const gratitude = m.gratitude || '仕事・身体・道具・縁に感謝';
+  if (m.first)   lines.push({ label: '朝イチの一手', text: m.first + 'から始める' });
+
+  html += `
+    <div class="morning-card" style="margin-top:12px;">
+      <div class="morning-head">
+        <span class="morning-site">${esc(m.site || (getMode() === 'work' ? '仕事メモ' : '現場メモ'))}</span>
+        <span class="morning-date">${esc(dateStr)}</span>
+      </div>
+      <div class="morning-body">`;
+
+  for (const l of lines) {
+    html += `
+        <div class="morning-line">
+          <div class="ml-label">${esc(l.label)}</div>
+          <div class="ml-text">${esc(l.text)}</div>
+        </div>`;
+  }
+
+  // 感謝・言霊
+  const remindLabel = getMode() === 'work' ? '重要リマインド' : '忘れ防止';
+  html += `
+        <div class="morning-line">
+          <div class="ml-label">感謝</div>
+          <div class="ml-text">${esc(gratitude)}</div>
+        </div>`;
+
+  if (m.important && m.remindText) {
+    html += `
+        <div class="morning-line" style="padding:12px 0;">
+          <div class="remind-card">
+            <div class="remind-card-label">⚠ ${esc(remindLabel)}</div>
+            <div class="remind-card-text">${esc(m.remindText)}</div>
+            ${m.remindTime ? `<div style="font-size:11px;color:var(--gold-dim);margin-top:4px;">⏰ ${esc(m.remindTime)}</div>` : ''}
+          </div>
+        </div>`;
+  }
+
+  html += `
+        <div class="morning-line" style="padding-top:16px; padding-bottom:16px;">
+          <div class="ml-kotoage">今日の一手を確認して、仕事開始。</div>
+        </div>`;
+
+  if (m.note) {
+    html += `
+        <div class="morning-line">
+          <div class="ml-label">メモ</div>
+          <div class="ml-text" style="font-size:13px; color:var(--text-dim)">${esc(m.note)}</div>
+        </div>`;
+  }
+
+  html += `
+      </div>
+    </div>
+    <div style="padding: 12px 16px 4px;">
+      <button class="btn btn-gold" onclick="openReorganize('${m.id}')"
+        style="font-size:14px; padding:14px; letter-spacing:0.1em;">
+        ⚡ 一手を組み直す
+      </button>
+    </div>
+    <div style="padding: 4px 16px 4px;">
+      <button class="btn btn-outline" onclick="openCalendarById('${m.id}')"
+        style="border-color:var(--gold-dim); color:var(--gold); font-size:13px; padding:13px;">
+        📅 Googleカレンダーに追加
+      </button>
+      ${m.date ? `<p style="font-size:10px; color:var(--text-faint); margin-top:6px; padding:0 2px; line-height:1.8;">※Googleカレンダーには ${calDateLabel(m.date)} の予定として追加されます。<br>※通知が必要な場合は、Googleカレンダー画面で「通知を追加」→「通知」→「5分前」を選んでから保存してください。</p>` : ''}
+    </div>
+    ${m.important && m.remindTime ? `
+    <div style="padding: 4px 16px 4px;">
+      <button class="btn btn-outline" onclick="openRemindCalendarById('${m.id}')"
+        style="border-color:var(--gold-dim); color:var(--gold-light); font-size:13px; padding:13px;">
+        ⚠ Googleカレンダーに${getMode() === 'work' ? '重要リマインド' : '忘れ防止'}を追加
+      </button>
+      <p style="font-size:10px; color:var(--text-faint); margin-top:6px; padding:0 2px; line-height:1.8;">※Googleカレンダーには ${calRemindLabel(m.date, m.remindTime)} で追加されます。<br>※通知を使う場合は、Googleカレンダー画面で「通知を追加」→「通知」→「5分前」を選んでから保存してください。<br>※これは時計アプリのアラームではなく、Googleカレンダー通知です。絶対に忘れたくない場合は、保存後に時計アプリでアラームも追加してください。</p>
+    </div>` : m.important && !m.remindTime ? `
+    <div style="padding: 4px 16px 4px;">
+      <p style="font-size:11px; color:var(--text-faint); padding:8px 0; line-height:1.6;">⚠ 通知時間を設定すると、Googleカレンダーに追加できます。</p>
+    </div>` : ''}
+    ${loadRoutine().trim() ? `
+    <div class="morning-card" style="margin-top:12px;">
+      <div class="morning-head">
+        <span class="morning-site">${getMode() === 'work' ? '始業前ルーティン' : '現場入りルーティン'}</span>
+      </div>
+      <div class="morning-body">
+        <div class="morning-line" style="white-space:pre-line; line-height:2;">
+          <div class="ml-text" style="font-size:15px;">${esc(loadRoutine())}</div>
+        </div>
+      </div>
+    </div>` : ''}`;
+
+  // 他のメモを選択するセレクター（2件目以降がある場合）
+  if (memos.length > 1) {
+    html += `<div class="section-label">過去のメモから選ぶ</div>`;
+    html += `<div style="padding: 0 16px 8px;">`;
+    for (let i = 1; i < Math.min(memos.length, 6); i++) {
+      const mm = memos[i];
+      html += `
+        <button class="btn btn-outline" style="margin-bottom:8px; text-align:left; padding:12px 14px;"
+          onclick="showMorningById('${esc(mm.id)}')">
+          <span style="color:var(--gold); font-size:12px;">${esc(mm.site || '—')}</span>
+          <span style="color:var(--text-faint); font-size:11px; margin-left:8px;">${esc(itteFormatDate(mm.date))}</span><br>
+          <span style="color:var(--text-dim); font-size:12px;">${esc(mm.main || md.noMain)}</span>
+        </button>`;
+    }
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+let _selectedMemoId = null;
+
+function showMorningById(id) {
+  _selectedMemoId = id;
+  const memos = itteLoadMemos();
+  const m = memos.find(x => x.id === id);
+  if (!m) return;
+  // 選択したメモを一時的に先頭に持ってきてrender
+  const reordered = [m, ...memos.filter(x => x.id !== id)];
+  renderMorningFromList(reordered);
+}
+
+function renderMorningFromList(memos) {
+  const container = document.getElementById('morning-content');
+  const m = memos[0];
+  const md = MODES[getMode()];
+  const dateStr = itteFormatDate(m.date);
+
+  const lines = [];
+  if (m.site)    lines.push({ label: md.morningLabelSite, text: m.site });
+  if (m.main)    lines.push({ label: md.morningLabelMain, text: m.main });
+  if (m.start)   lines.push({ label: md.morningLabelStart, text: m.start + 'から' });
+  if (m.caution) lines.push({ label: '注意点', text: m.caution });
+  if (m.items)   lines.push({ label: md.morningLabelItems, text: m.items });
+  const gratitude = m.gratitude || '仕事・身体・道具・縁に感謝';
+  if (m.first)   lines.push({ label: '朝イチの一手', text: m.first + 'から始める' });
+
+  let html = `
+    <div class="morning-card">
+      <div class="morning-head">
+        <span class="morning-site">${esc(m.site || (getMode() === 'work' ? '仕事メモ' : '現場メモ'))}</span>
+        <span class="morning-date">${esc(dateStr)}</span>
+      </div>
+      <div class="morning-body">`;
+
+  for (const l of lines) {
+    html += `<div class="morning-line"><div class="ml-label">${esc(l.label)}</div><div class="ml-text">${esc(l.text)}</div></div>`;
+  }
+
+  html += `
+      <div class="morning-line">
+        <div class="ml-label">感謝</div>
+        <div class="ml-text">${esc(gratitude)}</div>
+      </div>
+      <div class="morning-line" style="padding-top:16px; padding-bottom:16px;">
+        <div class="ml-kotoage">${esc(md.kotoage)}</div>
+      </div>`;
+
+  if (m.note) {
+    html += `<div class="morning-line"><div class="ml-label">メモ</div><div class="ml-text" style="font-size:13px;color:var(--text-dim)">${esc(m.note)}</div></div>`;
+  }
+
+  html += `</div></div>`;
+
+  html += `<div style="padding:12px 16px;">
+    <button class="btn btn-outline" onclick="renderMorning()">← 最新メモに戻る</button>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+/* ─── RENDER HISTORY ─── */
+function renderHistory() {
+  const memos = itteLoadMemos();
+  const container = document.getElementById('history-content');
+  const md = MODES[getMode()];
+
+  if (memos.length === 0) {
+    container.innerHTML = `<div class="empty-history">まだメモがありません。<br>「入力」から最初のメモを<br>記録してください。</div>`;
+    return;
+  }
+
+  let html = '<div class="history-list">';
+  for (const m of memos) {
+    html += `
+      <div class="history-item">
+        <div class="hi-head">
+          <span class="hi-site">${esc(m.site || '—')}</span>
+          <span class="hi-date">${esc(itteFormatDate(m.date))}</span>
+        </div>
+        <div class="hi-body">`;
+
+    if (m.main)    html += `<div class="hi-row"><span class="hi-key">${md.historyMain}</span><span class="hi-val">${esc(m.main)}</span></div>`;
+    if (m.start)   html += `<div class="hi-row"><span class="hi-key">${md.historyStart}</span><span class="hi-val">${esc(m.start)}</span></div>`;
+    if (m.first)   html += `<div class="hi-row"><span class="hi-key">朝イチ</span><span class="hi-val">${esc(m.first)}</span></div>`;
+    if (m.caution) html += `<div class="hi-row"><span class="hi-key">注意</span><span class="hi-val">${esc(m.caution)}</span></div>`;
+    if (m.items)   html += `<div class="hi-row"><span class="hi-key">${md.historyItems}</span><span class="hi-val">${esc(m.items)}</span></div>`;
+    if (m.important && m.remindText) {
+      const rl = getMode() === 'work' ? '重要' : '忘れ防止';
+      const rt = m.remindTime ? `（${m.remindTime}）` : '';
+      html += `<div class="hi-row"><span class="hi-key" style="color:var(--gold-dim);">⚠ ${rl}</span><span class="hi-val" style="color:var(--gold-dim);">${esc(m.remindText)}${rt}</span></div>`;
+    }
+
+    html += `
+        </div>
+        <div class="hi-footer">
+          <button class="btn btn-outline btn-sm" onclick="openEditModal('${m.id}')">編集</button>
+          <button class="btn btn-outline btn-sm" onclick="showMorningFromHistory('${m.id}')">朝に読む</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteMemo('${m.id}')">削除</button>
+        </div>
+      </div>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+/* ─── DELETE ─── */
+function deleteMemo(id) {
+  const memos = itteLoadMemos().filter(m => m.id !== id);
+  itteSaveMemos(memos);
+  renderHistory();
+  itteShowToast('削除しました');
+}
+
+function deleteMemoFromModal() {
+  const id = document.getElementById('edit-id').value;
+  if (!id) return;
+  const memos = itteLoadMemos().filter(m => m.id !== id);
+  itteSaveMemos(memos);
+  closeModal();
+  renderHistory();
+  itteShowToast('削除しました');
+}
+
+/* ─── EDIT MODAL ─── */
+function openEditModal(id) {
+  const m = itteLoadMemos().find(x => x.id === id);
+  if (!m) return;
+
+  setVal('edit-id', m.id);
+  setVal('e-site', m.site);
+  setVal('e-date', m.date);
+  setVal('e-main', m.main);
+  setVal('e-start', m.start);
+  setVal('e-caution', m.caution);
+  setVal('e-items', m.items);
+  setVal('e-gratitude', m.gratitude);
+  setVal('e-first', m.first);
+  setVal('e-note', m.note);
+
+  // リマインド
+  const eImportant = document.getElementById('e-important');
+  eImportant.checked = !!m.important;
+  setVal('e-remind-text', m.remindText || '');
+  setRemindTime('e', m.remindTime || '');
+  toggleEditRemindFields();
+
+  // モード連動バッジ切り替え
+  const md = MODES[getMode()];
+  const isWork = getMode() === 'work';
+  document.getElementById('e-badge-site').textContent  = md.siteBadge;
+  document.getElementById('e-site').placeholder        = md.sitePlaceholder;
+  document.getElementById('e-badge-start').textContent = md.startBadge;
+  document.getElementById('e-start').placeholder       = md.startPlaceholder;
+  document.getElementById('e-badge-items').textContent = md.itemsBadge;
+  document.getElementById('e-items').placeholder       = md.itemsPlaceholder;
+  document.getElementById('e-main').placeholder        = md.mainPlaceholder;
+
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function updateMemo() {
+  const id = document.getElementById('edit-id').value;
+  if (!id) return;
+
+  const memos = itteLoadMemos();
+  const idx = memos.findIndex(m => m.id === id);
+  if (idx === -1) return;
+
+  memos[idx] = {
+    ...memos[idx],
+    site: val('e-site') || (getMode() === 'work' ? '仕事・案件未記入' : '現場名未記入'),
+    date: val('e-date'),
+    main: val('e-main'),
+    start: val('e-start'),
+    caution: val('e-caution'),
+    items: val('e-items'),
+    gratitude: val('e-gratitude'),
+    first: val('e-first'),
+    note: val('e-note'),
+    important: document.getElementById('e-important').checked,
+    remindText: val('e-remind-text'),
+    remindTime: getRemindTime('e'),
+  };
+
+  itteSaveMemos(memos);
+  closeModal();
+  renderHistory();
+  itteShowToast('更新しました');
+}
+
+// モーダル外タップで閉じる
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+/* ─── HISTORY → MORNING ─── */
+function showMorningFromHistory(id) {
+  navigate('morning', document.querySelector('[data-screen="morning"]'));
+  setTimeout(() => showMorningById(id), 50);
+}
+
+/* ─── UTILS ─── */
+function itteFormatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  const w = ['日','月','火','水','木','金','土'];
+  return `${d.getMonth()+1}/${d.getDate()}(${w[d.getDay()]})`;
+}
+
+function esc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/\n/g,'<br>');
+}
+
+function itteShowToast(msg) {
+  const t = document.getElementById('itte-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ─── TODAY CARD ─── */
+function buildTodayCard(m) {
+  const isWork = getMode() === 'work';
+  const siteLabel  = isWork ? '仕事・案件' : '現場';
+  const firstLabel = isWork ? '最初' : '朝イチ';
+  const remLabel   = isWork ? '重要' : '忘れ防止';
+  const itemsLabel = isWork ? '準備' : '物';
+
+  // first → start → main の優先順位
+  const firstVal = m.first || m.start || m.main || '';
+
+  let rows = '';
+  if (m.site)       rows += `<div style="padding:5px 0; border-bottom:1px solid var(--border); font-size:14px; color:var(--text-dim);"><span style="font-size:10px;color:var(--text-faint);letter-spacing:.08em;margin-right:6px;">${siteLabel}</span>${esc(m.site)}</div>`;
+  if (firstVal)     rows += `<div style="padding:5px 0; border-bottom:1px solid var(--border); font-size:14px; color:var(--text);"><span style="font-size:10px;color:var(--text-faint);letter-spacing:.08em;margin-right:6px;">${firstLabel}</span>${esc(firstVal)}から始める</div>`;
+  if (m.caution)    rows += `<div style="padding:5px 0; border-bottom:1px solid var(--border); font-size:14px; color:var(--text-dim);"><span style="font-size:10px;color:var(--text-faint);letter-spacing:.08em;margin-right:6px;">注意</span>${esc(m.caution)}</div>`;
+  if (m.remindText) rows += `<div style="padding:5px 0; border-bottom:1px solid var(--border); font-size:14px; color:var(--gold-dim);"><span style="font-size:10px;color:var(--gold-dim);letter-spacing:.08em;margin-right:6px;">⚠ ${remLabel}</span>${esc(m.remindText)}</div>`;
+  if (m.items)      rows += `<div style="padding:5px 0; font-size:14px; color:var(--text-dim);"><span style="font-size:10px;color:var(--text-faint);letter-spacing:.08em;margin-right:6px;">${itemsLabel}</span>${esc(m.items)}</div>`;
+
+  if (!rows) return '';
+
+  return `
+  <div class="morning-card" style="margin:12px 16px 0; opacity:.95; border-color:var(--border);">
+    <div class="morning-head" style="padding:10px 16px;">
+      <span class="morning-site" style="font-size:12px; letter-spacing:.12em;">今日の一枚</span>
+      <span style="font-size:10px; color:var(--text-faint);">付箋に写すなら、このまま。</span>
+    </div>
+    <div style="padding:6px 16px 12px;">${rows}</div>
+  </div>`;
+}
+
+/* ─── TIME SELECT ─── */
+function buildTimeSelects() {
+  const hours   = ['f-remind-hour',   'e-remind-hour'];
+  const minutes = ['f-remind-minute', 'e-remind-minute'];
+
+  hours.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.options.length > 1) return;
+    for (let h = 0; h < 24; h++) {
+      const v = String(h).padStart(2,'0');
+      el.appendChild(new Option(v, v));
+    }
+  });
+
+  minutes.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.options.length > 1) return;
+    [0,5,10,15,20,25,30,35,40,45,50,55].forEach(m => {
+      const v = String(m).padStart(2,'0');
+      el.appendChild(new Option(v, v));
+    });
+  });
+}
+
+function getRemindTime(prefix) {
+  const h = document.getElementById(`${prefix}-remind-hour`).value;
+  const m = document.getElementById(`${prefix}-remind-minute`).value;
+  return (h && m) ? `${h}:${m}` : '';
+}
+
+function setRemindTime(prefix, timeStr) {
+  const h = document.getElementById(`${prefix}-remind-hour`);
+  const m = document.getElementById(`${prefix}-remind-minute`);
+  if (!h || !m) return;
+  if (timeStr && timeStr.includes(':')) {
+    const [hh, mm] = timeStr.split(':');
+    h.value = hh;
+    m.value = mm;
+  } else {
+    h.value = '';
+    m.value = '';
+  }
+}
+
+/* ─── REMIND TOGGLE ─── */
+function toggleRemindFields() {
+  const cb = document.getElementById('f-important');
+  const fields = document.getElementById('remind-fields');
+  if (fields) fields.style.display = cb && cb.checked ? 'block' : 'none';
+}
+
+function toggleEditRemindFields() {
+  const cb = document.getElementById('e-important');
+  const fields = document.getElementById('e-remind-fields');
+  if (fields) fields.style.display = cb && cb.checked ? 'block' : 'none';
+}
+
+/* ─── REMIND CALENDAR ─── */
+function openRemindCalendar(m) {
+  if (!m.date || !m.remindTime) {
+    itteShowToast('日付と時間を設定してください');
+    return;
+  }
+  const pad = n => String(n).padStart(2,'0');
+  const [hh, mm2] = m.remindTime.split(':');
+  const dateBase = m.date.replace(/-/g,'');
+  const start = `${dateBase}T${hh}${mm2}00`;
+  // 5分後
+  const d = new Date(m.date + 'T' + m.remindTime + ':00');
+  d.setMinutes(d.getMinutes() + 5);
+  const endDate = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+  const end = `${endDate}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+
+  const isWork = getMode() === 'work';
+  const text = m.remindText || m.first || m.main || '';
+  const title = encodeURIComponent(`${isWork ? '【重要】' : '【忘れ防止】'}${text}`);
+  const url = `https://calendar.google.com/calendar/render?action=TEMPLATE`
+    + `&text=${title}`
+    + `&dates=${start}/${end}`;
+  window.open(url, '_blank');
+}
+
+/* ─── BACKUP / EXPORT / IMPORT ─── */
+function exportData() {
+  const data = {
+    appName: '明日の一手',
+    exportAt: new Date().toISOString(),
+    genba_memos_v1: localStorage.getItem('genba_memos_v1'),
+    genba_routine_v1: localStorage.getItem('genba_routine_v1'),
+    genba_mode_v1: localStorage.getItem('genba_mode_v1'),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  a.href = url;
+  a.download = `ashita-no-itte-backup-${dateStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  itteShowToast('バックアップを保存しました');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!confirm('現在のデータに上書きします。よろしいですか？')) {
+    event.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.genba_memos_v1 !== undefined) localStorage.setItem('genba_memos_v1', data.genba_memos_v1);
+      if (data.genba_routine_v1 !== undefined) localStorage.setItem('genba_routine_v1', data.genba_routine_v1 || '');
+      if (data.genba_mode_v1 !== undefined) localStorage.setItem('genba_mode_v1', data.genba_mode_v1 || 'genba');
+      renderMorning();
+      renderHistory();
+      applyMode();
+      itteShowToast('復元しました');
+    } catch(err) {
+      itteShowToast('ファイルが正しくありません');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+/* ─── ONBOARDING ─── */
+const ONBOARDING_KEY = 'genba_onboarding_seen_v1';
+
+function checkOnboarding() {
+  if (!localStorage.getItem(ONBOARDING_KEY)) {
+    document.getElementById('onboarding-overlay').classList.add('open');
+  }
+}
+
+function closeOnboarding() {
+  localStorage.setItem(ONBOARDING_KEY, '1');
+  document.getElementById('onboarding-overlay').classList.remove('open');
+}
+
+/* ─── REORGANIZE ─── */
+function openReorganize(id) {
+  const m = itteLoadMemos().find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('reorg-id').value = id;
+  document.getElementById('reorg-reason').value = '';
+  document.getElementById('reorg-reason').placeholder =
+    getMode() === 'work' ? '予定変更・連絡待ち・優先順位変更など' : '材料未着・天候・指示変更など';
+  document.getElementById('reorg-first').value = m.first || '';
+  document.getElementById('reorg-caution').value = m.caution || '';
+  document.getElementById('reorg-overlay').style.display = 'block';
+}
+
+function closeReorganize() {
+  document.getElementById('reorg-overlay').style.display = 'none';
+}
+
+function saveReorganize() {
+  const id = document.getElementById('reorg-id').value;
+  const reason = (document.getElementById('reorg-reason').value || '').trim();
+  const first = (document.getElementById('reorg-first').value || '').trim();
+  const caution = (document.getElementById('reorg-caution').value || '').trim();
+
+  if (!first && !reason) { itteShowToast('次の一手か理由を入力してください'); return; }
+
+  const memos = itteLoadMemos();
+  const idx = memos.findIndex(m => m.id === id);
+  if (idx === -1) return;
+
+  const m = memos[idx];
+  // 理由を自由メモに追記
+  const append = reason ? `組み直し：${reason}` : '組み直し：状況変化';
+  const newNote = m.note ? `${m.note}\n${append}` : append;
+
+  memos[idx] = {
+    ...m,
+    first: first || m.first,
+    caution: caution || m.caution,
+    note: newNote,
+  };
+
+  itteSaveMemos(memos);
+  closeReorganize();
+  renderMorning();
+  itteShowToast('一手を組み直しました');
+}
+
+/* ─── CALENDAR VIEW ─── */
+const WD = ['日','月','火','水','木','金','土'];
+let _calYear  = new Date().getFullYear();
+let _calMonth = new Date().getMonth(); // 0-indexed
+let _calSelected = null; // 'YYYY-MM-DD'
+
+function renderCalendar() {
+  const today = new Date();
+  const todayStr = toDateStr(today);
+  const memos = itteLoadMemos();
+
+  // メモがある日付のSetを作成
+  const memoDateSet = new Set(memos.map(m => m.date).filter(Boolean));
+
+  // 月ラベル
+  document.getElementById('cal-month-label').textContent =
+    `${_calYear}年${_calMonth + 1}月`;
+
+  // 日付グリッド生成
+  const firstDay = new Date(_calYear, _calMonth, 1);
+  const lastDay  = new Date(_calYear, _calMonth + 1, 0);
+  const startWd  = firstDay.getDay(); // 0=日
+  const totalDays = lastDay.getDate();
+
+  let html = '';
+
+  // 空白セル
+  for (let i = 0; i < startWd; i++) {
+    html += `<div class="cal-day empty"></div>`;
+  }
+
+  // 日付セル
+  for (let d = 1; d <= totalDays; d++) {
+    const dateStr = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const wd = (startWd + d - 1) % 7;
+    let cls = 'cal-day';
+    if (wd === 0) cls += ' sun';
+    if (wd === 6) cls += ' sat';
+    if (dateStr === todayStr) cls += ' today';
+    if (dateStr === _calSelected) cls += ' selected';
+    const dot = memoDateSet.has(dateStr) ? `<div class="cal-dot"></div>` : '';
+    html += `<button class="${cls}" onclick="calSelectDay('${dateStr}')">${d}${dot}</button>`;
+  }
+
+  document.getElementById('cal-days').innerHTML = html;
+
+  // 選択日のメモ表示
+  if (_calSelected) {
+    renderCalDetail(_calSelected, memos);
+  } else {
+    document.getElementById('cal-detail').style.display = 'none';
+  }
+}
+
+function calSelectDay(dateStr) {
+  _calSelected = (_calSelected === dateStr) ? null : dateStr;
+  renderCalendar();
+}
+
+function calPrevMonth() {
+  _calMonth--;
+  if (_calMonth < 0) { _calMonth = 11; _calYear--; }
+  _calSelected = null;
+  renderCalendar();
+}
+
+function calNextMonth() {
+  _calMonth++;
+  if (_calMonth > 11) { _calMonth = 0; _calYear++; }
+  _calSelected = null;
+  renderCalendar();
+}
+
+function renderCalDetail(dateStr, memos) {
+  const detail = document.getElementById('cal-detail');
+  detail.style.display = 'block';
+  const md = MODES[getMode()];
+
+  const d = new Date(dateStr + 'T00:00:00');
+  const label = `${d.getMonth()+1}月${d.getDate()}日(${WD[d.getDay()]}) のメモ`;
+
+  const dayMemos = memos.filter(m => m.date === dateStr);
+
+  let html = `<div class="cal-detail-title">${label}</div>`;
+
+  if (dayMemos.length === 0) {
+    html += `<div class="cal-no-memo">この日のメモはありません</div>`;
+  } else {
+    for (const m of dayMemos) {
+      html += `
+        <div class="cal-memo-item">
+          <div class="cal-memo-head">
+            <span class="cal-memo-site">${esc(m.site || '—')}</span>
+          </div>
+          <div class="cal-memo-body">`;
+      if (m.main)  html += `<div class="hi-row"><span class="hi-key">${md.historyMain}</span><span class="hi-val">${esc(m.main)}</span></div>`;
+      if (m.start) html += `<div class="hi-row"><span class="hi-key">${md.historyStart}</span><span class="hi-val">${esc(m.start)}</span></div>`;
+      if (m.first) html += `<div class="hi-row"><span class="hi-key">朝イチ</span><span class="hi-val">${esc(m.first)}</span></div>`;
+      if (m.items) html += `<div class="hi-row"><span class="hi-key">${md.historyItems}</span><span class="hi-val">${esc(m.items)}</span></div>`;
+      if (m.important && m.remindText) {
+        const rl = getMode() === 'work' ? '重要' : '忘れ防止';
+        const rt = m.remindTime ? `（${m.remindTime}）` : '';
+        html += `<div class="hi-row"><span class="hi-key" style="color:var(--gold-dim);">⚠ ${rl}</span><span class="hi-val" style="color:var(--gold-dim);">${esc(m.remindText)}${rt}</span></div>`;
+      }
+      html += `
+          </div>
+          <div class="cal-memo-foot">
+            <button class="btn btn-outline btn-sm" onclick="showMorningFromHistory('${m.id}')">朝に読む</button>
+          </div>
+        </div>`;
+    }
+  }
+
+  detail.innerHTML = html;
+}
+
+function toDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/* ─── MODE ─── */
+const MODE_KEY = 'genba_mode_v1';
+
+const MODES = {
+  genba: {
+    inputTitle: '現場メモ',
+    inputSub: '現場終わりの10秒で、明日を決める',
+    siteBadge: '現場',
+    sitePlaceholder: '現場名',
+    divider1: '明日の作業',
+    mainBadge: '明日',
+    mainName: 'メイン作業',
+    mainPlaceholder: '明日のメイン作業は何か',
+    startBadge: '入',
+    startName: 'どこから入るか',
+    startPlaceholder: '最初に手をつける場所・作業',
+    cautionBadge: '注',
+    cautionName: '注意点',
+    cautionPlaceholder: '危険・段取り・職人との調整など',
+    itemsBadge: '物',
+    itemsName: '必要な物・忘れ物防止',
+    itemsPlaceholder: '工具・材料・図面・書類など',
+    firstPlaceholder: '現場に着いたらまず○○から',
+    modeLabel: '現場モード（現場・職人・監督向け）',
+    saveError: '現場名か明日の作業を入力してください',
+    noMemoText: 'まだメモがありません。<br>現場終わりに「入力」から<br>明日の一手を記録してください。',
+    historySub: '過去の現場メモ一覧',
+    morningLabelSite: '今日の現場',
+    morningLabelMain: '今日のメイン作業',
+    morningLabelStart: '入りは',
+    morningLabelItems: '持ち物・確認',
+    calTitle: '【現場】',
+    calMain: '明日',
+    calStart: '入り',
+    calItems: '持ち物',
+    historyMain: '明日',
+    historyStart: '入り',
+    historyItems: '持ち物',
+    noMain: '作業未記入',
+    kotoage: '今日の一手を確認して、仕事開始。',
+  },
+  work: {
+    inputTitle: '明日の一手メモ',
+    inputSub: '仕事終わりの10秒で、明日の一手を決める',
+    siteBadge: '仕事・案件',
+    sitePlaceholder: '例：〇〇邸／〇〇店／営業先／在宅作業／副業',
+    divider1: '明日の一手',
+    mainBadge: '明日',
+    mainName: 'メインタスク',
+    mainPlaceholder: '明日いちばん先に進めることは何か',
+    startBadge: '始',
+    startName: 'どこから始めるか',
+    startPlaceholder: '最初に手をつけること・場所・連絡・処理',
+    cautionBadge: '注',
+    cautionName: '注意点',
+    cautionPlaceholder: '注意点・段取り・連絡・確認事項など',
+    itemsBadge: '準備',
+    itemsName: '必要な物・資料・忘れ物防止',
+    itemsPlaceholder: '道具・資料・書類・持ち物・確認するもの',
+    firstPlaceholder: '仕事を始めたらまず○○から',
+    modeLabel: '仕事モード（全職種向け）',
+    saveError: '仕事・案件名か明日の一手を入力してください',
+    noMemoText: 'まだメモがありません。<br>仕事終わりに「入力」から<br>明日の一手を記録してください。',
+    historySub: '過去のメモ一覧',
+    morningLabelSite: '今日の仕事・案件',
+    morningLabelMain: '今日のメインタスク',
+    morningLabelStart: '最初は',
+    morningLabelItems: '準備・確認',
+    calTitle: '【仕事】',
+    calMain: '明日の一手',
+    calStart: '始める場所・行動',
+    calItems: '準備',
+    historyMain: '明日の一手',
+    historyStart: '最初',
+    historyItems: '準備',
+    noMain: '一手未記入',
+    kotoage: '今日の一手を確認して、仕事開始。',
+  }
+};
+
+function getMode() {
+  return localStorage.getItem(MODE_KEY) === 'work' ? 'work' : 'genba';
+}
+
+function setMode(mode) {
+  localStorage.setItem(MODE_KEY, mode);
+  applyMode();
+  itteShowToast(mode === 'work' ? '仕事モードに切り替えました' : '現場モードに切り替えました');
+}
+
+function applyMode() {
+  const m = MODES[getMode()];
+
+  // 入力画面タイトル
+  const inputScreen = document.getElementById('screen-input');
+  inputScreen.querySelector('.screen-title').textContent = m.inputTitle;
+  inputScreen.querySelector('.screen-sub').textContent = m.inputSub;
+
+  // 現場/案件
+  document.querySelector('#screen-input .field-badge').textContent = m.siteBadge;
+  document.getElementById('f-site').placeholder = m.sitePlaceholder;
+
+  // セクション見出し
+  document.querySelector('#screen-input .divider-text').textContent = m.divider1;
+
+  // 明日/メインタスク
+  const fields = document.querySelectorAll('#screen-input .field-row');
+  // fields[0]=明日, [1]=入/始, [2]=注, [3]=物/準備, [4]=感, [5]=朝イチ, [6]=メモ
+  fields[0].querySelector('.field-badge').textContent = m.mainBadge;
+  fields[0].querySelector('.field-name').textContent = m.mainName;
+  document.getElementById('f-main').placeholder = m.mainPlaceholder;
+
+  fields[1].querySelector('.field-badge').textContent = m.startBadge;
+  fields[1].querySelector('.field-name').textContent = m.startName;
+  document.getElementById('f-start').placeholder = m.startPlaceholder;
+
+  fields[2].querySelector('.field-badge').textContent = m.cautionBadge;
+  fields[2].querySelector('.field-name').textContent = m.cautionName;
+  document.getElementById('f-caution').placeholder = m.cautionPlaceholder;
+
+  fields[3].querySelector('.field-badge').textContent = m.itemsBadge;
+  fields[3].querySelector('.field-name').textContent = m.itemsName;
+  document.getElementById('f-items').placeholder = m.itemsPlaceholder;
+
+  document.getElementById('f-first').placeholder = m.firstPlaceholder;
+
+  // 設定画面のモードボタン状態
+  const currentMode = getMode();
+
+  // ナビアイコン切り替え
+  const navIcon = document.getElementById('nav-morning-icon');
+  if (navIcon) navIcon.textContent = currentMode === 'genba' ? '🔨' : '💼';
+
+  const eRemindLabel = document.getElementById('e-remind-toggle-label');
+  const eRemindBadge = document.getElementById('e-remind-badge');
+  const eRemindText  = document.getElementById('e-remind-text');
+  if (eRemindLabel) eRemindLabel.textContent = getMode() === 'work' ? '重要リマインドにする' : '忘れ防止にする';
+  if (eRemindBadge) eRemindBadge.textContent = getMode() === 'work' ? '重要リマインド' : '忘れ防止';
+  if (eRemindText)  eRemindText.placeholder  = getMode() === 'work' ? '例：朝イチで〇〇へ連絡する' : '例：予備バッテリーを忘れない';
+
+  // リマインドトグルラベル
+  const remindToggleLabel = document.getElementById('remind-toggle-label');
+  const remindBadge = document.getElementById('remind-badge');
+  if (remindToggleLabel) remindToggleLabel.textContent = m.siteBadge === '現場' ? '忘れ防止にする' : '重要リマインドにする';
+  if (remindBadge) remindBadge.textContent = m.siteBadge === '現場' ? '忘れ防止' : '重要リマインド';
+  document.getElementById('f-remind-text') && (document.getElementById('f-remind-text').placeholder =
+    getMode() === 'work' ? '例：朝イチで〇〇へ連絡する' : '例：予備バッテリーを忘れない');
+
+  // 履歴サブコピー
+  const historySub = document.getElementById('history-sub');
+  if (historySub) historySub.textContent = m.historySub;
+
+  // ルーティン文言切り替え
+  const routineDivider = document.getElementById('routine-divider-text');
+  const routineFieldName = document.getElementById('routine-field-name');
+  if (routineDivider) routineDivider.textContent = currentMode === 'genba' ? '現場入りルーティン' : '始業前ルーティン';
+  if (routineFieldName) routineFieldName.textContent = currentMode === 'genba' ? '現場入りルーティンメモ' : '始業前ルーティンメモ';
+
+  const btnGenba = document.getElementById('mode-btn-genba');
+  const btnWork  = document.getElementById('mode-btn-work');
+  if (btnGenba && btnWork) {
+    btnGenba.className = currentMode === 'genba'
+      ? 'btn btn-gold' : 'btn btn-outline';
+    btnWork.className  = currentMode === 'work'
+      ? 'btn btn-gold' : 'btn btn-outline';
+    document.getElementById('mode-current').textContent =
+      '現在：' + MODES[currentMode].modeLabel;
+  }
+}
+
+/* ─── ROUTINE ─── */
+const ROUTINE_KEY = 'genba_routine_v1';
+const ROUTINE_DEFAULT = `1. トイレ掃除・水撒き
+2. コーヒー
+3. ストレッチ
+4. 仕事用アファ確認
+5. 今日の一手確認
+6. 仕事開始`;
+
+function loadRoutine() {
+  const saved = localStorage.getItem(ROUTINE_KEY);
+  return saved === null ? ROUTINE_DEFAULT : saved;
+}
+
+function loadRoutineToForm() {
+  document.getElementById('s-routine').value = loadRoutine();
+}
+
+function saveRoutine() {
+  const v = (document.getElementById('s-routine').value || '').trim();
+  localStorage.setItem(ROUTINE_KEY, v);
+  itteShowToast('ルーティンを保存しました');
+}
+
+/* ─── CALENDAR DATE LABEL ─── */
+function calDateLabel(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  const WD2 = ['日','月','火','水','木','金','土'];
+  return `${d.getMonth()+1}/${d.getDate()}（${WD2[d.getDay()]}）`;
+}
+
+function calRemindLabel(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return '';
+  const d = new Date(`${dateStr}T${timeStr}:00`);
+  const end = new Date(d);
+  end.setMinutes(end.getMinutes() + 5);
+  const pad = n => String(n).padStart(2,'0');
+  const WD2 = ['日','月','火','水','木','金','土'];
+  const dayPart = `${d.getMonth()+1}/${d.getDate()}（${WD2[d.getDay()]}）`;
+  return `${dayPart} ${pad(d.getHours())}:${pad(d.getMinutes())}〜${pad(end.getHours())}:${pad(end.getMinutes())}`;
+}
+
+function openCalendarById(id) {
+  const memo = itteLoadMemos().find(m => m.id === id);
+  if (!memo) { itteShowToast('メモが見つかりません'); return; }
+  openCalendar(memo);
+}
+
+function openRemindCalendarById(id) {
+  const memo = itteLoadMemos().find(m => m.id === id);
+  if (!memo) { itteShowToast('メモが見つかりません'); return; }
+  openRemindCalendar(memo);
+}
+
+/* ─── CALENDAR ─── */
+function openCalendar(m) {
+  if (!m.date) { itteShowToast('日付が未設定です'); return; }
+
+  const d = new Date(m.date + 'T00:00:00');
+  const next = new Date(d);
+  next.setDate(d.getDate() + 1);
+
+  const pad = n => String(n).padStart(2,'0');
+  const fmt = dt => `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}`;
+
+  const md = MODES[getMode()];
+  const title = encodeURIComponent(`${md.calTitle}${m.site || ''}`);
+
+  const details = [
+    m.main    ? `■ ${md.calMain}：${m.main}` : '',
+    m.start   ? `■ ${md.calStart}：${m.start}` : '',
+    m.caution ? `■ 注意：${m.caution}` : '',
+    m.items   ? `■ ${md.calItems}：${m.items}` : '',
+    m.first   ? `■ 朝イチ：${m.first}` : '',
+    m.note    ? `■ メモ：${m.note}` : '',
+    '',
+    '今日の一手を確認して、仕事開始。'
+  ].filter(Boolean).join('\n');
+
+  const url = `https://calendar.google.com/calendar/render?action=TEMPLATE`
+    + `&text=${title}`
+    + `&dates=${fmt(d)}/${fmt(next)}`
+    + `&details=${encodeURIComponent(details)}`;
+
+  window.open(url, '_blank');
+}
+
+
+initDate();
+buildTimeSelects();
+renderMorning();
+applyMode();
+checkOnboarding();
+
+
+</script>
+</body>
+</html>
