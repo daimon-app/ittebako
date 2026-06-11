@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ittebako-v1';
+const CACHE_NAME = 'ittebako-v3';
 const FILES_TO_CACHE = [
   './',
   './index.html',
