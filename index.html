@@ -2336,12 +2336,28 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
     </div>
     <div style="padding:18px 16px 8px;">
       <p style="font-size:13px; color:var(--text-dim); line-height:1.9; margin-bottom:18px; padding:12px 14px; background:var(--bg3); border-radius:4px; border-left:3px solid var(--gold-dim);">
-        軽く深呼吸して、リラックスしましょう。<br>次の一手だけ決め直せば大丈夫です。
+        軽く深呼吸して、リラックスしましょう。<br>変わったところだけ直せば大丈夫です。
       </p>
       <input type="hidden" id="reorg-id">
       <div class="field-row">
         <div class="field-label"><span class="field-badge">理由</span><span class="field-name">何が変わったか</span></div>
         <input type="text" id="reorg-reason" placeholder="材料未着・天候・指示変更など">
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge" id="reorg-badge-site">現場</span><span class="field-name">現場名</span></div>
+        <input type="text" id="reorg-site" placeholder="現場名">
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">日付</span><span class="field-name">いつの一手か</span></div>
+        <input type="date" id="reorg-date">
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">メイン</span><span class="field-name">メイン作業</span></div>
+        <input type="text" id="reorg-main" placeholder="その日のメイン作業">
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge" id="reorg-badge-start">入り</span><span class="field-name">入り</span></div>
+        <input type="text" id="reorg-start" placeholder="入りの時間・段取り">
       </div>
       <div class="field-row">
         <div class="field-label"><span class="field-badge">次の一手</span><span class="field-name">朝イチを置き直す</span></div>
@@ -2350,6 +2366,14 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
       <div class="field-row">
         <div class="field-label"><span class="field-badge">注意</span><span class="field-name">注意点を更新</span></div>
         <textarea id="reorg-caution" rows="2" placeholder="新しい注意点があれば"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge" id="reorg-badge-items">必要な物</span><span class="field-name">必要な物</span></div>
+        <textarea id="reorg-items" rows="2" placeholder="持っていく物・材料"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">感謝</span><span class="field-name">感謝・ひとこと</span></div>
+        <input type="text" id="reorg-gratitude" placeholder="感謝・ひとこと">
       </div>
     </div>
     <div style="padding:8px 16px 16px; display:flex; gap:10px;">
@@ -3802,7 +3826,13 @@ function updateMemo() {
 
   itteSaveMemos(memos);
   closeModal();
-  renderHistory();
+  // 編集元がどの画面でも反映されるよう、表示中の画面を更新
+  if (document.getElementById('screen-history') && document.getElementById('screen-history').classList.contains('active')) {
+    renderHistory();
+  }
+  if (document.getElementById('screen-morning') && document.getElementById('screen-morning').classList.contains('active')) {
+    renderMorning();
+  }
   itteShowToast('更新しました');
 }
 
@@ -4023,8 +4053,27 @@ function openReorganize(id) {
   document.getElementById('reorg-reason').value = '';
   document.getElementById('reorg-reason').placeholder =
     getMode() === 'work' ? '予定変更・連絡待ち・優先順位変更など' : '材料未着・天候・指示変更など';
+
+  // 全項目を既存データで初期表示（組み直し＝全項目を直せる）
+  document.getElementById('reorg-site').value = m.site || '';
+  document.getElementById('reorg-date').value = m.date || '';
+  document.getElementById('reorg-main').value = m.main || '';
+  document.getElementById('reorg-start').value = m.start || '';
   document.getElementById('reorg-first').value = m.first || '';
   document.getElementById('reorg-caution').value = m.caution || '';
+  document.getElementById('reorg-items').value = m.items || '';
+  document.getElementById('reorg-gratitude').value = m.gratitude || '';
+
+  // モード連動バッジ
+  const md = MODES[getMode()];
+  document.getElementById('reorg-badge-site').textContent  = md.siteBadge;
+  document.getElementById('reorg-site').placeholder        = md.sitePlaceholder;
+  document.getElementById('reorg-badge-start').textContent = md.startBadge;
+  document.getElementById('reorg-start').placeholder       = md.startPlaceholder;
+  document.getElementById('reorg-badge-items').textContent = md.itemsBadge;
+  document.getElementById('reorg-items').placeholder       = md.itemsPlaceholder;
+  document.getElementById('reorg-main').placeholder        = md.mainPlaceholder;
+
   document.getElementById('reorg-overlay').style.display = 'block';
 }
 
@@ -4036,23 +4085,32 @@ function saveReorganize() {
   const id = document.getElementById('reorg-id').value;
   const reason = (document.getElementById('reorg-reason').value || '').trim();
   const first = (document.getElementById('reorg-first').value || '').trim();
-  const caution = (document.getElementById('reorg-caution').value || '').trim();
-
-  if (!first && !reason) { itteShowToast('次の一手か理由を入力してください'); return; }
 
   const memos = itteLoadMemos();
   const idx = memos.findIndex(m => m.id === id);
   if (idx === -1) return;
 
   const m = memos[idx];
-  // 理由を自由メモに追記
-  const append = reason ? `組み直し：${reason}` : '組み直し：状況変化';
-  const newNote = m.note ? `${m.note}\n${append}` : append;
 
+  // 理由があれば自由メモに追記（記録を残す）
+  let newNote = m.note || '';
+  if (reason) {
+    const append = `組み直し：${reason}`;
+    newNote = newNote ? `${newNote}\n${append}` : append;
+  }
+
+  // 全項目を上書き（id・createdAtは維持、updatedAtを更新）
+  const val = (elId) => (document.getElementById(elId).value || '').trim();
   memos[idx] = {
     ...m,
+    site: val('reorg-site') || m.site,
+    date: val('reorg-date') || m.date,
+    main: val('reorg-main'),
+    start: val('reorg-start'),
     first: first || m.first,
-    caution: caution || m.caution,
+    caution: val('reorg-caution'),
+    items: val('reorg-items'),
+    gratitude: val('reorg-gratitude'),
     note: newNote,
     updatedAt: new Date().toISOString(), // 組み直し日時を更新
   };
