@@ -2375,6 +2375,10 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
         <div class="field-label"><span class="field-badge">感謝</span><span class="field-name">感謝・ひとこと</span></div>
         <input type="text" id="reorg-gratitude" placeholder="感謝・ひとこと">
       </div>
+      <div class="field-row">
+        <div class="field-label"><span class="field-badge">メモ</span><span class="field-name">自由メモ</span></div>
+        <textarea id="reorg-note" rows="3" placeholder="自由メモ"></textarea>
+      </div>
     </div>
     <div style="padding:8px 16px 16px; display:flex; gap:10px;">
       <button class="btn btn-gold" style="flex:2" onclick="saveReorganize()">組み直して動く</button>
@@ -4063,6 +4067,7 @@ function openReorganize(id) {
   document.getElementById('reorg-caution').value = m.caution || '';
   document.getElementById('reorg-items').value = m.items || '';
   document.getElementById('reorg-gratitude').value = m.gratitude || '';
+  document.getElementById('reorg-note').value = m.note || '';
 
   // モード連動バッジ
   const md = MODES[getMode()];
@@ -4092,15 +4097,16 @@ function saveReorganize() {
 
   const m = memos[idx];
 
+  // 自由メモは編集後の内容をベースにする
+  const val = (elId) => (document.getElementById(elId).value || '').trim();
+  let newNote = val('reorg-note');
   // 理由があれば自由メモに追記（記録を残す）
-  let newNote = m.note || '';
   if (reason) {
     const append = `組み直し：${reason}`;
     newNote = newNote ? `${newNote}\n${append}` : append;
   }
 
   // 全項目を上書き（id・createdAtは維持、updatedAtを更新）
-  const val = (elId) => (document.getElementById(elId).value || '').trim();
   memos[idx] = {
     ...m,
     site: val('reorg-site') || m.site,
