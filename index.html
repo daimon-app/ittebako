@@ -3324,8 +3324,38 @@ if ('serviceWorker' in navigator) {
 
 /* ─── STORAGE ─── */
 /* DAIMON統合: 一手メモは hirameki_memos_v1 に category:'tomorrow' で保存 */
+// メモの「最終更新日時」を返す（updatedAt優先、なければcreatedAt/created_at）
+function itteMemoTime(m) {
+  const t = m.updatedAt || m.createdAt || m.created_at;
+  const ms = t ? Date.parse(t) : NaN;
+  return isNaN(ms) ? 0 : ms;
+}
+
+// 今日の日付文字列（YYYY-MM-DD, ローカル基準）
+function itteTodayStr() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// 明日の一手メモを取得。
+// 並び順は「日時基準で新しい順（updatedAt→createdAt）」に統一。
+// さらに、今日の日付(m.date===今日)のメモがあれば最優先で先頭に持ってくる。
+// これにより renderMorning の memos[0] が常に「最新（または今日）」になる。
 function itteLoadMemos() {
-  return loadMemos().filter(m => m.category === 'tomorrow');
+  const list = loadMemos().filter(m => m.category === 'tomorrow');
+
+  // ① 日時の新しい順
+  list.sort((a, b) => itteMemoTime(b) - itteMemoTime(a));
+
+  // ② 今日のメモを最優先（複数あれば、その中で日時の新しい順を維持）
+  const today = itteTodayStr();
+  const todays = list.filter(m => m.date === today);
+  const others = list.filter(m => m.date !== today);
+
+  return [...todays, ...others];
 }
 
 function itteSaveMemos(memos) {
@@ -3335,6 +3365,8 @@ function itteSaveMemos(memos) {
     category: 'tomorrow',
     body: m.body || m.main || m.site || '',
     created_at: m.created_at || m.createdAt || new Date().toISOString(),
+    createdAt: m.createdAt || m.created_at || new Date().toISOString(),
+    updatedAt: m.updatedAt || null,
     source: m.source || 'itte',
     completed: m.completed === true,
   }));
@@ -3765,6 +3797,7 @@ function updateMemo() {
     important: document.getElementById('e-important').checked,
     remindText: val('e-remind-text'),
     remindTime: getRemindTime('e'),
+    updatedAt: new Date().toISOString(), // 編集日時を更新（id・createdAtは維持）
   };
 
   itteSaveMemos(memos);
@@ -4021,6 +4054,7 @@ function saveReorganize() {
     first: first || m.first,
     caution: caution || m.caution,
     note: newNote,
+    updatedAt: new Date().toISOString(), // 組み直し日時を更新
   };
 
   itteSaveMemos(memos);
