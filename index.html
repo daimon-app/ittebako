@@ -843,6 +843,16 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
 .storage-action-row .btn-action-crimson {
   flex: 1 1 100%;
 }
+.storage-backup-section {
+  margin-top: 28px; padding-top: 20px; border-top: 1px solid #2a2a2a;
+}
+.storage-backup-title {
+  font-size: 13px; color: var(--gold, #c9a84c); letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+.storage-backup-note {
+  font-size: 11px; color: #888; line-height: 1.7; margin-top: 10px;
+}
 .storage-item {
   display: flex;
   align-items: flex-start;
@@ -2583,6 +2593,20 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
 
     <!-- カテゴリ別セクション -->
     <div id="storage-sections"></div>
+
+    <!-- データ保護 -->
+    <div class="storage-backup-section">
+      <div class="storage-backup-title">データ保護</div>
+      <div class="storage-action-row">
+        <button class="btn-action-gold" onclick="copyAllDataJSON()">全データJSONコピー</button>
+        <button class="btn-action-select" onclick="toggleAllDataJSON()">全データ表示</button>
+      </div>
+      <textarea id="all-data-json" readonly style="display:none; width:100%; height:140px; margin-top:10px; font-size:11px; background:#0d0d0d; color:#bbb; border:1px solid #333; padding:8px; border-radius:4px; box-sizing:border-box;"></textarea>
+      <div class="storage-backup-note">保存・編集・削除のたびに自動でバックアップされています。万一データが消えた場合は「バックアップから復元」で直前の状態に戻せます。</div>
+      <div class="storage-action-row" style="margin-top:8px;">
+        <button class="btn-action-select" onclick="restoreFromBackup()">バックアップから復元</button>
+      </div>
+    </div>
   </div>
 
   <nav class="org-nav">
@@ -2621,6 +2645,7 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
    SHARED STATE
 ════════════════════════════════════════ */
 const STORAGE_KEY = 'hirameki_memos_v1';
+const BACKUP_KEY = 'hirameki_memos_backup_v1';
 
 function loadMemos() {
   try {
@@ -2630,10 +2655,29 @@ function loadMemos() {
   } catch(e) { return []; }
 }
 
+// 保存直前に現在の全データをバックアップ（万一の破壊に備える）
+function backupAllMemos() {
+  try {
+    const cur = localStorage.getItem(STORAGE_KEY);
+    if (cur != null) localStorage.setItem(BACKUP_KEY, cur);
+  } catch(e) {}
+}
+
 function saveMemos(memos) {
   try {
+    backupAllMemos(); // 上書き前に必ずバックアップ
     localStorage.setItem(STORAGE_KEY, JSON.stringify(memos));
   } catch(e) {}
+}
+
+// ★データ保護の要：カテゴリ単位の安全保存。
+// 指定カテゴリのメモだけ差し替え、他カテゴリは必ず維持する。
+// category は単一文字列、または文字列配列（複数カテゴリをまとめて差し替える場合）。
+function saveCategoryMemos(category, categoryMemos) {
+  const cats = Array.isArray(category) ? category : [category];
+  const all = loadMemos();
+  const others = all.filter(m => !cats.includes(m.category));
+  saveMemos([...categoryMemos, ...others]);
 }
 
 /* ════════════════════════════════════════
@@ -2679,8 +2723,8 @@ const SHOPPING_WORDS = [
 ];
 
 const TOMORROW_WORDS = [
-  '明日の一手', '明日やる', '明日',
-  '一手',
+  '明日の一手', '明日やる', '明日メモ',
+  '明日：', '明日:', '明日',
 ];
 
 let dropAutoSaveTimer = null;
@@ -2911,6 +2955,45 @@ const SOURCE_LABELS = {
   tomorrow: '一手画面',
 };
 
+/* ─── データ保護機能 ─── */
+function copyAllDataJSON() {
+  const raw = localStorage.getItem(STORAGE_KEY) || '[]';
+  copyText(raw, '全データをコピーしました（保管推奨）。');
+}
+
+function toggleAllDataJSON() {
+  const el = document.getElementById('all-data-json');
+  if (!el) return;
+  if (el.style.display === 'none') {
+    const raw = localStorage.getItem(STORAGE_KEY) || '[]';
+    try {
+      el.value = JSON.stringify(JSON.parse(raw), null, 2);
+    } catch(e) {
+      el.value = raw;
+    }
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function restoreFromBackup() {
+  const backup = localStorage.getItem(BACKUP_KEY);
+  if (!backup) {
+    showStorageToast('バックアップがありません。');
+    return;
+  }
+  if (!confirm('直前のバックアップに戻します。現在のデータは上書きされます。よろしいですか？')) return;
+  // 復元前に「現在の状態」も退避（復元を取り消したい時のため）
+  try {
+    const cur = localStorage.getItem(STORAGE_KEY);
+    if (cur != null) localStorage.setItem(BACKUP_KEY + '_prev', cur);
+    localStorage.setItem(STORAGE_KEY, backup);
+  } catch(e) {}
+  renderStorage();
+  showStorageToast('バックアップから復元しました。');
+}
+
 function renderStorage() {
   const all = loadMemos();
 
@@ -3086,11 +3169,18 @@ function saveMemo() {
   };
 
   orgMemos.unshift(memo);
-  saveMemos(orgMemos);
+  saveOrgMemos(); // shopping/tomorrowを維持してorgMemosを保存
   input.value = '';
   renderList();
   showToast(SAVE_MESSAGES[Math.floor(Math.random() * SAVE_MESSAGES.length)]);
   input.focus();
+}
+
+// ひらめき箱(整理)画面の安全保存。
+// orgMemos = shopping/tomorrow を除いた全カテゴリ。保存時その2カテゴリは必ず残す。
+function saveOrgMemos() {
+  const preserved = loadMemos().filter(m => m.category === 'shopping' || m.category === 'tomorrow');
+  saveMemos([...orgMemos, ...preserved]);
 }
 
 function renderList() {
@@ -3240,7 +3330,7 @@ function confirmDelete() {
   if (!deleteTargetId) return;
   orgMemos = orgMemos.filter(m => m.id !== deleteTargetId);
   selectedIds.delete(deleteTargetId);
-  saveMemos(orgMemos);
+  saveOrgMemos(); // shopping/tomorrowを維持して保存
   renderList();
   closeConfirm();
   showToast('削除した。');
