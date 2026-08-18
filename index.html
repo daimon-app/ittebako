@@ -3163,11 +3163,23 @@ function restoreProductStorageSnapshot(snapshot) {
   });
 }
 
+function isValidBackupCreatedAt(value) {
+  if (typeof value !== 'string' || value.length === 0) return false;
+  // Export uses Date#toISOString(): YYYY-MM-DDTHH:mm:ss.sssZ.
+  if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d:[0-5]\d\.\d{3}Z$/.test(value)) return false;
+  try {
+    return new Date(value).toISOString() === value;
+  } catch (error) {
+    return false;
+  }
+}
+
 function validateBackupPayload(data) {
   if (!isPlainObject(data)) throw new Error('backup object required');
   if (data.productId !== undefined) {
     if (data.productId !== PRODUCT_ID) throw new Error('product mismatch');
     if (data.schemaVersion !== STORAGE_SCHEMA_VERSION) throw new Error('unsupported schema version');
+    if (!isValidBackupCreatedAt(data.createdAt)) throw new Error('invalid backup createdAt');
     if (!Array.isArray(data.memos) || !isPlainObject(data.settings) ||
         !isPlainObject(data.night) || !isPlainObject(data.safety)) {
       throw new Error('backup fields missing');

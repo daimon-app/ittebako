@@ -1,0 +1,40 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>P02 createdAt QA</title>
+<body><pre id="out">running...</pre><iframe id="app" hidden></iframe><script>
+(async()=>{
+  const results=[]; const add=(name,ok,detail='')=>results.push({name,ok:Boolean(ok),detail});
+  const app=document.getElementById('app');
+  const loadApp=()=>new Promise(resolve=>{ app.onload=()=>resolve(app.contentWindow); app.src=`../index.html?createdAtQa=${Date.now()}#drop`; });
+  const w=await loadApp();
+  const memoKey='daimon_ittebako_memos_v2';
+  const siblingKey='sibling_product_data';
+  const base=w.createFullExportPayload();
+  const accepts=value=>{ try { w.validateBackupPayload({...base,createdAt:value}); return true; } catch(error) { return false; } };
+
+  add('01 valid createdAt accepted', accepts('2026-08-18T11:22:33.456Z'));
+  const missing={...base}; delete missing.createdAt;
+  let missingRejected=false; try { w.validateBackupPayload(missing); } catch(error) { missingRejected=error.message==='invalid backup createdAt'; }
+  add('02 missing rejected', missingRejected);
+  add('03 null rejected', !accepts(null));
+  add('04 empty rejected', !accepts(''));
+  add('05 invalid-date rejected', !accepts('invalid-date'));
+  add('06 impossible date rejected', !accepts('2026-02-30T00:00:00.000Z'));
+  add('07 invalid types rejected', [123,true,{},[]].every(value=>!accepts(value)));
+
+  localStorage.setItem(memoKey, JSON.stringify([{id:'keep',body:'KEEP',category:'hirameki',created_at:'2026-08-18T00:00:00.000Z'}]));
+  localStorage.setItem(siblingKey,'SIBLING_KEEP');
+  const beforeMemo=localStorage.getItem(memoKey); const beforeSibling=localStorage.getItem(siblingKey);
+  try { w.validateBackupPayload({...base,createdAt:'2026/08/18 11:22:33'}); } catch(error) {}
+  add('08 rejected validation leaves storage unchanged', localStorage.getItem(memoKey)===beforeMemo && localStorage.getItem(siblingKey)===beforeSibling);
+
+  const roundtrip=w.createFullExportPayload();
+  w.applyValidatedBackup(w.validateBackupPayload(roundtrip));
+  add('09 valid backup roundtrip', JSON.parse(localStorage.getItem(memoKey))[0].body==='KEEP');
+
+  const legacy={genba_memos_v1:JSON.stringify([{id:'legacy-createdat',main:'旧明日の一手'}])};
+  w.applyValidatedBackup(w.validateBackupPayload(legacy));
+  add('10 legacy backup compatibility', JSON.parse(localStorage.getItem(memoKey))[0].category==='tomorrow');
+
+  document.getElementById('out').textContent=JSON.stringify({pass:results.filter(x=>x.ok).length,total:results.length,results},null,2);
+  document.title=results.every(x=>x.ok)?'P02 createdAt QA PASS':'P02 createdAt QA FAIL';
+})().catch(error=>{document.getElementById('out').textContent=error.stack;document.title='P02 createdAt QA ERROR';});
+</script></body></html>
