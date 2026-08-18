@@ -1,7 +1,8 @@
 # P02 A-01〜A-06 修正QA
 
 確認日: 2026-08-18
-基準commit: `7a8f6db`
+施工基準commit: `7a8f6db`
+最終QA対象commit: `e038d497b81ca19e0852fbc118928e7f1d250d9c`
 Writer: Codex
 Branch: `product/p02-sales-ready`
 
@@ -35,6 +36,25 @@ localhost限定 `tests/qa.html` を実Chromeで実行し15/15 PASS。
 | 13 | 法務4導線 | PASS（HTTP 200） |
 | 14 | SW cache境界 | PASS（`daimon-ittebako-v10` と `sibling-product-v1` を同時保持） |
 | 15 | backup metadata | PASS（product ID、schema 3、createdAt） |
+
+## A-05 createdAt最終QA
+
+localhost限定 `tests/createdat-qa.html` をブラウザで実行し10/10 PASS。
+
+| # | Case | 結果 |
+|---|---|---|
+| 1 | 正常UTC ISO createdAt | PASS |
+| 2 | createdAt欠落 | PASS（書込前拒否） |
+| 3 | null | PASS（書込前拒否） |
+| 4 | 空文字 | PASS（書込前拒否） |
+| 5 | `invalid-date` | PASS（書込前拒否） |
+| 6 | 存在しない日時 | PASS（書込前拒否） |
+| 7 | number / boolean / object / array | PASS（書込前拒否） |
+| 8 | validation失敗後のP02・sibling Storage | PASS（不変） |
+| 9 | 正常backup往復 | PASS |
+| 10 | legacy backup | PASS（互換維持） |
+
+日時仕様はexportの `Date.prototype.toISOString()` と同一の `YYYY-MM-DDTHH:mm:ss.sssZ`。importは正規表現と `new Date(value).toISOString() === value` の完全一致で検証し、曖昧形式・暦上存在しない日時を拒否する。
 
 ## その他
 

@@ -10,3 +10,4 @@
 6. SWは `daimon-ittebako-` prefix cacheだけを所有し、他prefixを削除しない。
 7. A-06の本人固有値は生成しない。到達可能なdraftを作成し、未確定値を販売blockとして明記する。
 8. A-07はscope外。Android/AAB/Play設定を変更しない。
+9. A-05再監査指摘により、schema v3の`createdAt`はexportと同一のUTCミリ秒付きISO形式だけを受理する。`Date.parse()`単独は使用せず、形式と暦上の日時を完全一致検証する。legacy backupにはこの要件を遡及しない。
