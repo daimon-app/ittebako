@@ -1,8 +1,8 @@
 # P02 一手箱 販売READY QA
 
-確認日: 2026-08-18  
-Branch: `product/p02-sales-ready`  
-Writer: Codex  
+確認日: 2026-08-18
+Branch: `product/p02-sales-ready`
+Writer: Codex
 Reviewer: Claude Code（差分限定レビューを2.1.233で試行、180秒タイムアウトのため結果取得不可）
 
 ## 施工内容
@@ -36,4 +36,4 @@ Reviewer: Claude Code（差分限定レビューを2.1.233で試行、180秒タ�
 
 ## 判定
 
-技術施工部分は `REVIEW`。Claudeの独立レビュー結果を取得できていないため、最終販売監査前の条件付き状態とする。本番公開・販売開始は未実施。
+この文書はcommit `7a8f6db` 時点の旧QA記録。Manus最終監査で混在同一ID、legacy backup、共有Storage、Service Worker cache境界の不足が判明したため、当時の総合PASS判定を撤回する。A-01〜A-06修正後の正本は `A01_A06_FIX_QA.md` を参照。本番公開・販売開始は未実施。
