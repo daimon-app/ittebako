@@ -2099,7 +2099,7 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
 <!-- ─── HEADER ─── -->
 <header>
   <h1>帰ってからの一手メモ</h1>
-  <span>鉄兵専用</span>
+  <span>DAIMON SERIES</span>
 </header>
 
 <!-- ─── VIEW: IDLE (初期 / 今日の一手確認) ─── -->
@@ -2644,14 +2644,103 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
 /* ════════════════════════════════════════
    SHARED STATE
 ════════════════════════════════════════ */
-const STORAGE_KEY = 'hirameki_memos_v1';
-const BACKUP_KEY = 'hirameki_memos_backup_v1';
+const PRODUCT_ID = 'daimon-ittebako';
+const STORAGE_SCHEMA_VERSION = 2;
+const STORAGE_KEY = 'daimon_ittebako_memos_v2';
+const BACKUP_KEY = 'daimon_ittebako_memos_backup_v2';
+const MIGRATION_STATE_KEY = 'daimon_ittebako_storage_migrated_v2';
+const MIGRATION_RAW_BACKUP_KEY = 'daimon_ittebako_migration_raw_v1';
+const LEGACY_MEMO_KEYS = ['hirameki_memos_v1', 'genba_memos_v1'];
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function firstString(...values) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
+
+function normalizeMemo(memo, index = 0, sourceKey = STORAGE_KEY) {
+  if (!isPlainObject(memo)) return null;
+  const body = firstString(memo.body, memo.text, memo.main, memo.site, memo.first);
+  if (!body) return null;
+  const createdAt = firstString(memo.created_at, memo.createdAt) || new Date().toISOString();
+  const legacyId = `legacy-${sourceKey}-${index}-${createdAt}`;
+  return {
+    ...memo,
+    id: firstString(String(memo.id ?? '')) || legacyId,
+    body,
+    category: firstString(memo.category) || (sourceKey === 'genba_memos_v1' ? 'tomorrow' : 'hirameki'),
+    source: firstString(memo.source) || `legacy:${sourceKey}`,
+    created_at: createdAt,
+    completed: Boolean(memo.completed),
+  };
+}
+
+function normalizeMemoList(value, sourceKey = STORAGE_KEY) {
+  if (!Array.isArray(value)) return [];
+  return value.map((memo, index) => normalizeMemo(memo, index, sourceKey)).filter(Boolean);
+}
+
+function parseMemoArray(raw, sourceKey) {
+  if (!raw) return [];
+  return normalizeMemoList(JSON.parse(raw), sourceKey);
+}
+
+function dedupeMemos(memos) {
+  const seen = new Set();
+  return memos.map((memo, index) => {
+    const originalId = String(memo.id);
+    if (!seen.has(originalId)) {
+      seen.add(originalId);
+      return memo;
+    }
+    let suffix = index;
+    let uniqueId = `${originalId}-${suffix}`;
+    while (seen.has(uniqueId)) uniqueId = `${originalId}-${++suffix}`;
+    seen.add(uniqueId);
+    return { ...memo, id: uniqueId };
+  });
+}
+
+function migrateLegacyStorage() {
+  if (localStorage.getItem(STORAGE_KEY) !== null) return;
+  const legacyRaw = {};
+  LEGACY_MEMO_KEYS.forEach(key => {
+    const raw = localStorage.getItem(key);
+    if (raw !== null) legacyRaw[key] = raw;
+  });
+  try {
+    if (Object.keys(legacyRaw).length) {
+      localStorage.setItem(MIGRATION_RAW_BACKUP_KEY, JSON.stringify(legacyRaw));
+    }
+    const migrated = [];
+    Object.entries(legacyRaw).forEach(([key, raw]) => {
+      try { migrated.push(...parseMemoArray(raw, key)); } catch(e) {}
+    });
+    const normalized = dedupeMemos(migrated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    localStorage.setItem(MIGRATION_STATE_KEY, JSON.stringify({
+      schemaVersion: STORAGE_SCHEMA_VERSION,
+      migratedAt: new Date().toISOString(),
+      sourceKeys: Object.keys(legacyRaw),
+      migratedCount: normalized.length,
+    }));
+  } catch(e) {
+    console.warn('Legacy storage migration could not be completed.', e);
+  }
+}
+
+migrateLegacyStorage();
 
 function loadMemos() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const data = raw ? JSON.parse(raw) : [];
-    return Array.isArray(data) ? data : [];
+    return normalizeMemoList(data);
   } catch(e) { return []; }
 }
 
@@ -2666,7 +2755,7 @@ function backupAllMemos() {
 function saveMemos(memos) {
   try {
     backupAllMemos(); // 上書き前に必ずバックアップ
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(memos));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dedupeMemos(normalizeMemoList(memos))));
   } catch(e) {}
 }
 
@@ -2956,21 +3045,24 @@ const SOURCE_LABELS = {
 };
 
 /* ─── データ保護機能 ─── */
+function createFullExportPayload() {
+  return {
+    productId: PRODUCT_ID,
+    schemaVersion: STORAGE_SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    memos: loadMemos(),
+  };
+}
+
 function copyAllDataJSON() {
-  const raw = localStorage.getItem(STORAGE_KEY) || '[]';
-  copyText(raw, '全データをコピーしました（保管推奨）。');
+  copyText(JSON.stringify(createFullExportPayload(), null, 2), '全データをコピーしました（保管推奨）。');
 }
 
 function toggleAllDataJSON() {
   const el = document.getElementById('all-data-json');
   if (!el) return;
   if (el.style.display === 'none') {
-    const raw = localStorage.getItem(STORAGE_KEY) || '[]';
-    try {
-      el.value = JSON.stringify(JSON.parse(raw), null, 2);
-    } catch(e) {
-      el.value = raw;
-    }
+    el.value = JSON.stringify(createFullExportPayload(), null, 2);
     el.style.display = 'block';
   } else {
     el.style.display = 'none';
@@ -3441,7 +3533,7 @@ if ('serviceWorker' in navigator) {
 /* ════════ 明日の一手（完全移植）JS ════════ */
 
 /* ─── STORAGE ─── */
-/* DAIMON統合: 一手メモは hirameki_memos_v1 に category:'tomorrow' で保存 */
+/* DAIMON統合: 一手メモは商品専用ストレージに category:'tomorrow' で保存 */
 // メモの「最終更新日時」を返す（updatedAt優先、なければcreatedAt/created_at）
 function itteMemoTime(m) {
   const t = m.updatedAt || m.createdAt || m.created_at;
@@ -4081,8 +4173,8 @@ function openRemindCalendar(m) {
 /* ─── BACKUP / EXPORT / IMPORT ─── */
 function exportData() {
   const data = {
-    appName: '明日の一手',
-    exportAt: new Date().toISOString(),
+    ...createFullExportPayload(),
+    appName: '一手箱',
     genba_memos_v1: localStorage.getItem('genba_memos_v1'),
     genba_routine_v1: localStorage.getItem('genba_routine_v1'),
     genba_mode_v1: localStorage.getItem('genba_mode_v1'),
@@ -4093,7 +4185,7 @@ function exportData() {
   const today = new Date();
   const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
   a.href = url;
-  a.download = `ashita-no-itte-backup-${dateStr}.json`;
+  a.download = `daimon-ittebako-backup-${dateStr}.json`;
   a.click();
   URL.revokeObjectURL(url);
   itteShowToast('バックアップを保存しました');
@@ -4110,6 +4202,15 @@ function importData(event) {
   reader.onload = function(e) {
     try {
       const data = JSON.parse(e.target.result);
+      if (data.productId && data.productId !== PRODUCT_ID) throw new Error('product mismatch');
+      let importMemos = data.memos;
+      if (!Array.isArray(importMemos) && typeof data.genba_memos_v1 === 'string') {
+        importMemos = JSON.parse(data.genba_memos_v1 || '[]');
+      }
+      if (!Array.isArray(importMemos)) throw new Error('memo list missing');
+      const normalized = dedupeMemos(normalizeMemoList(importMemos, 'import'));
+      if (importMemos.length && !normalized.length) throw new Error('no valid memos');
+      saveMemos(normalized);
       if (data.genba_memos_v1 !== undefined) localStorage.setItem('genba_memos_v1', data.genba_memos_v1);
       if (data.genba_routine_v1 !== undefined) localStorage.setItem('genba_routine_v1', data.genba_routine_v1 || '');
       if (data.genba_mode_v1 !== undefined) localStorage.setItem('genba_mode_v1', data.genba_mode_v1 || 'genba');
