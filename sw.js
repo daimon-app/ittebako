@@ -1,10 +1,15 @@
-const CACHE_NAME = 'ittebako-v9';
+const CACHE_PREFIX = 'daimon-ittebako-';
+const CACHE_NAME = `${CACHE_PREFIX}v10`;
 const FILES_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './legal/privacy.html',
+  './legal/terms.html',
+  './legal/sales.html',
+  './legal/support.html'
 ];
 
 self.addEventListener('install', event => {
@@ -18,7 +23,7 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.map(key => {
-        if (key !== CACHE_NAME) return caches.delete(key);
+        if (key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME) return caches.delete(key);
       }))
     )
   );

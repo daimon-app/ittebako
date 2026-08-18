@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>一手箱</title>
 <style>
@@ -2053,13 +2054,24 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
         <span class="field-name">データのバックアップと復元</span>
       </div>
       <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px; line-height:1.7;">
-        ブラウザのデータ削除や機種変更に備えて、定期的にバックアップしてください。
+        メモ・設定・夜の一手はこのブラウザ内に保存されます。ブラウザのデータ削除や機種変更に備えて、定期的に全データをバックアップしてください。
       </p>
-      <button class="btn btn-outline" style="margin-bottom:10px;" onclick="exportData()">📥 メモをバックアップ</button>
+      <button class="btn btn-outline" style="margin-bottom:10px;" onclick="exportData()">📥 全データをバックアップ</button>
       <label class="btn btn-outline" style="display:block; text-align:center; cursor:pointer; padding:16px;">
         📤 バックアップを復元
         <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(event)">
       </label>
+    </div>
+
+    <div class="divider"><span class="divider-text">販売・データ取扱い</span></div>
+    <div class="field-row">
+      <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px; line-height:1.7;">
+        通常のメモは端末内保存です。Google Calendarへ追加する場合だけ、入力した予定名・日時がGoogleへ渡ります。Google Fontsも画面表示時に外部通信します。
+      </p>
+      <a class="btn btn-outline" style="display:block;text-align:center;margin-bottom:8px;" href="./legal/privacy.html">プライバシーポリシー</a>
+      <a class="btn btn-outline" style="display:block;text-align:center;margin-bottom:8px;" href="./legal/terms.html">利用規約</a>
+      <a class="btn btn-outline" style="display:block;text-align:center;margin-bottom:8px;" href="./legal/sales.html">販売者情報・特商法表示・返金案内</a>
+      <a class="btn btn-outline" style="display:block;text-align:center;" href="./legal/support.html">問い合わせ</a>
     </div>
   </div>
 </div>
@@ -2645,12 +2657,31 @@ textarea#memo-input::placeholder { color: var(--text-dim); font-size: 15px; }
    SHARED STATE
 ════════════════════════════════════════ */
 const PRODUCT_ID = 'daimon-ittebako';
-const STORAGE_SCHEMA_VERSION = 2;
+const STORAGE_SCHEMA_VERSION = 3;
 const STORAGE_KEY = 'daimon_ittebako_memos_v2';
 const BACKUP_KEY = 'daimon_ittebako_memos_backup_v2';
-const MIGRATION_STATE_KEY = 'daimon_ittebako_storage_migrated_v2';
+const FULL_BACKUP_KEY = 'daimon_ittebako_full_backup_v3';
+const MIGRATION_STATE_KEY = 'daimon_ittebako_storage_migrated_v3';
 const MIGRATION_RAW_BACKUP_KEY = 'daimon_ittebako_migration_raw_v1';
+const AUXILIARY_MIGRATION_STATE_KEY = 'daimon_ittebako_auxiliary_migrated_v1';
+const AUXILIARY_RAW_BACKUP_KEY = 'daimon_ittebako_auxiliary_raw_v1';
 const LEGACY_MEMO_KEYS = ['hirameki_memos_v1', 'genba_memos_v1'];
+const MODE_KEY = 'daimon_ittebako_mode_v1';
+const ROUTINE_KEY = 'daimon_ittebako_routine_v1';
+const ONBOARDING_KEY = 'daimon_ittebako_onboarding_seen_v1';
+const STORAGE_TASK = 'daimon_ittebako_night_task_v1';
+const STORAGE_DONE = 'daimon_ittebako_night_done_v1';
+const STORAGE_LOG = 'daimon_ittebako_night_log_v1';
+const STORAGE_DATE = 'daimon_ittebako_night_date_v1';
+const LEGACY_AUXILIARY_KEYS = {
+  genba_mode_v1: MODE_KEY,
+  genba_routine_v1: ROUTINE_KEY,
+  genba_onboarding_seen_v1: ONBOARDING_KEY,
+  itte_task: STORAGE_TASK,
+  itte_done: STORAGE_DONE,
+  itte_log: STORAGE_LOG,
+  itte_date: STORAGE_DATE,
+};
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -2690,38 +2721,55 @@ function parseMemoArray(raw, sourceKey) {
   return normalizeMemoList(JSON.parse(raw), sourceKey);
 }
 
-function dedupeMemos(memos) {
+function memoFingerprint(memo) {
+  return JSON.stringify([
+    memo.body || '', memo.category || '', memo.site || '', memo.main || '',
+    memo.start || '', memo.first || '', memo.date || '', memo.created_at || memo.createdAt || '',
+  ]);
+}
+
+// Merge rule: exact same semantic record is kept once. Different records that
+// share an ID are both kept and the later record receives a deterministic ID.
+function mergeMemosExactlyOnce(memos) {
   const seen = new Set();
-  return memos.map((memo, index) => {
+  const fingerprints = new Set();
+  const merged = [];
+  memos.forEach((memo, index) => {
+    const fingerprint = memoFingerprint(memo);
+    if (fingerprints.has(fingerprint)) return;
+    fingerprints.add(fingerprint);
     const originalId = String(memo.id);
     if (!seen.has(originalId)) {
       seen.add(originalId);
-      return memo;
+      merged.push(memo);
+      return;
     }
     let suffix = index;
     let uniqueId = `${originalId}-${suffix}`;
     while (seen.has(uniqueId)) uniqueId = `${originalId}-${++suffix}`;
     seen.add(uniqueId);
-    return { ...memo, id: uniqueId };
+    merged.push({ ...memo, id: uniqueId });
   });
+  return merged;
 }
 
 function migrateLegacyStorage() {
-  if (localStorage.getItem(STORAGE_KEY) !== null) return;
+  if (localStorage.getItem(MIGRATION_STATE_KEY)) return;
   const legacyRaw = {};
   LEGACY_MEMO_KEYS.forEach(key => {
     const raw = localStorage.getItem(key);
     if (raw !== null) legacyRaw[key] = raw;
   });
   try {
-    if (Object.keys(legacyRaw).length) {
+    if (Object.keys(legacyRaw).length && localStorage.getItem(MIGRATION_RAW_BACKUP_KEY) === null) {
       localStorage.setItem(MIGRATION_RAW_BACKUP_KEY, JSON.stringify(legacyRaw));
     }
-    const migrated = [];
+    const current = parseMemoArray(localStorage.getItem(STORAGE_KEY), STORAGE_KEY);
+    const migrated = [...current];
     Object.entries(legacyRaw).forEach(([key, raw]) => {
       try { migrated.push(...parseMemoArray(raw, key)); } catch(e) {}
     });
-    const normalized = dedupeMemos(migrated);
+    const normalized = mergeMemosExactlyOnce(migrated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
     localStorage.setItem(MIGRATION_STATE_KEY, JSON.stringify({
       schemaVersion: STORAGE_SCHEMA_VERSION,
@@ -2735,6 +2783,32 @@ function migrateLegacyStorage() {
 }
 
 migrateLegacyStorage();
+
+function migrateAuxiliaryStorage() {
+  if (localStorage.getItem(AUXILIARY_MIGRATION_STATE_KEY)) return;
+  const raw = {};
+  Object.keys(LEGACY_AUXILIARY_KEYS).forEach(legacyKey => {
+    const legacyValue = localStorage.getItem(legacyKey);
+    if (legacyValue !== null) raw[legacyKey] = legacyValue;
+  });
+  try {
+    if (Object.keys(raw).length) localStorage.setItem(AUXILIARY_RAW_BACKUP_KEY, JSON.stringify(raw));
+    Object.entries(LEGACY_AUXILIARY_KEYS).forEach(([legacyKey, productKey]) => {
+      if (raw[legacyKey] !== undefined && localStorage.getItem(productKey) === null) {
+        localStorage.setItem(productKey, raw[legacyKey]);
+      }
+    });
+    localStorage.setItem(AUXILIARY_MIGRATION_STATE_KEY, JSON.stringify({
+      schemaVersion: 1,
+      migratedAt: new Date().toISOString(),
+      sourceKeys: Object.keys(raw),
+    }));
+  } catch (error) {
+    console.warn('Auxiliary storage migration could not be completed.', error);
+  }
+}
+
+migrateAuxiliaryStorage();
 
 function loadMemos() {
   try {
@@ -2755,8 +2829,12 @@ function backupAllMemos() {
 function saveMemos(memos) {
   try {
     backupAllMemos(); // 上書き前に必ずバックアップ
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dedupeMemos(normalizeMemoList(memos))));
-  } catch(e) {}
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(mergeMemosExactlyOnce(normalizeMemoList(memos))));
+    return true;
+  } catch(e) {
+    console.warn('Memo save failed.', e);
+    return false;
+  }
 }
 
 // ★データ保護の要：カテゴリ単位の安全保存。
@@ -3049,9 +3127,101 @@ function createFullExportPayload() {
   return {
     productId: PRODUCT_ID,
     schemaVersion: STORAGE_SCHEMA_VERSION,
-    exportedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
     memos: loadMemos(),
+    settings: {
+      mode: localStorage.getItem(MODE_KEY),
+      routine: localStorage.getItem(ROUTINE_KEY),
+      onboardingSeen: localStorage.getItem(ONBOARDING_KEY),
+    },
+    night: {
+      task: localStorage.getItem(STORAGE_TASK),
+      done: localStorage.getItem(STORAGE_DONE),
+      log: localStorage.getItem(STORAGE_LOG),
+      date: localStorage.getItem(STORAGE_DATE),
+    },
+    safety: {
+      migrationState: localStorage.getItem(MIGRATION_STATE_KEY),
+      migrationRaw: localStorage.getItem(MIGRATION_RAW_BACKUP_KEY),
+      auxiliaryMigrationState: localStorage.getItem(AUXILIARY_MIGRATION_STATE_KEY),
+      auxiliaryRaw: localStorage.getItem(AUXILIARY_RAW_BACKUP_KEY),
+    },
   };
+}
+
+function snapshotProductStorage() {
+  const keys = [STORAGE_KEY, BACKUP_KEY, MODE_KEY, ROUTINE_KEY, ONBOARDING_KEY,
+    STORAGE_TASK, STORAGE_DONE, STORAGE_LOG, STORAGE_DATE, MIGRATION_STATE_KEY,
+    MIGRATION_RAW_BACKUP_KEY, AUXILIARY_MIGRATION_STATE_KEY, AUXILIARY_RAW_BACKUP_KEY];
+  return Object.fromEntries(keys.map(key => [key, localStorage.getItem(key)]));
+}
+
+function restoreProductStorageSnapshot(snapshot) {
+  Object.entries(snapshot).forEach(([key, value]) => {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  });
+}
+
+function validateBackupPayload(data) {
+  if (!isPlainObject(data)) throw new Error('backup object required');
+  if (data.productId !== undefined) {
+    if (data.productId !== PRODUCT_ID) throw new Error('product mismatch');
+    if (data.schemaVersion !== STORAGE_SCHEMA_VERSION) throw new Error('unsupported schema version');
+    if (!Array.isArray(data.memos) || !isPlainObject(data.settings) ||
+        !isPlainObject(data.night) || !isPlainObject(data.safety)) {
+      throw new Error('backup fields missing');
+    }
+    const memos = mergeMemosExactlyOnce(normalizeMemoList(data.memos, 'backup-v3'));
+    if (data.memos.length && !memos.length) throw new Error('no valid memos');
+    return { kind: 'current', memos, settings: data.settings, night: data.night, safety: data.safety };
+  }
+
+  if (typeof data.genba_memos_v1 !== 'string') throw new Error('unknown legacy backup');
+  const legacyMemos = JSON.parse(data.genba_memos_v1 || '[]');
+  if (!Array.isArray(legacyMemos)) throw new Error('legacy memo list missing');
+  const memos = mergeMemosExactlyOnce(normalizeMemoList(legacyMemos, 'genba_memos_v1'));
+  if (legacyMemos.length && !memos.length) throw new Error('no valid legacy memos');
+  return {
+    kind: 'legacy-genba-v1',
+    memos,
+    settings: { mode: data.genba_mode_v1 ?? null, routine: data.genba_routine_v1 ?? null },
+    night: {}, safety: {},
+  };
+}
+
+function applyValidatedBackup(validated) {
+  const before = snapshotProductStorage();
+  localStorage.setItem(FULL_BACKUP_KEY, JSON.stringify({
+    productId: PRODUCT_ID,
+    schemaVersion: STORAGE_SCHEMA_VERSION,
+    createdAt: new Date().toISOString(),
+    storage: before,
+  }));
+  try {
+    if (!saveMemos(validated.memos)) throw new Error('memo restore failed');
+    const mappings = [
+      [MODE_KEY, validated.settings.mode],
+      [ROUTINE_KEY, validated.settings.routine],
+      [ONBOARDING_KEY, validated.settings.onboardingSeen],
+      [STORAGE_TASK, validated.night.task],
+      [STORAGE_DONE, validated.night.done],
+      [STORAGE_LOG, validated.night.log],
+      [STORAGE_DATE, validated.night.date],
+      [MIGRATION_STATE_KEY, validated.safety.migrationState],
+      [MIGRATION_RAW_BACKUP_KEY, validated.safety.migrationRaw],
+      [AUXILIARY_MIGRATION_STATE_KEY, validated.safety.auxiliaryMigrationState],
+      [AUXILIARY_RAW_BACKUP_KEY, validated.safety.auxiliaryRaw],
+    ];
+    mappings.forEach(([key, value]) => {
+      if (value === undefined) return;
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, String(value));
+    });
+  } catch (error) {
+    restoreProductStorageSnapshot(before);
+    throw error;
+  }
 }
 
 function copyAllDataJSON() {
@@ -3582,21 +3752,6 @@ function itteSaveMemos(memos) {
   }));
   saveMemos([...normalized, ...others]);
 }
-
-/* 旧キー genba_memos_v1 からの一回限り移行 */
-(function migrateItte() {
-  try {
-    if (localStorage.getItem('itte_migrated_v1')) return;
-    const old = JSON.parse(localStorage.getItem('genba_memos_v1') || 'null');
-    if (Array.isArray(old) && old.length) {
-      const existing = itteLoadMemos();
-      const existingIds = new Set(existing.map(m => m.id));
-      const merged = [...old.filter(m => !existingIds.has(m.id)), ...existing];
-      itteSaveMemos(merged);
-    }
-    localStorage.setItem('itte_migrated_v1', '1');
-  } catch(e) {}
-})();
 
 /* ─── NAVIGATION ─── */
 function navigate(screenId, btn) {
@@ -4175,9 +4330,6 @@ function exportData() {
   const data = {
     ...createFullExportPayload(),
     appName: '一手箱',
-    genba_memos_v1: localStorage.getItem('genba_memos_v1'),
-    genba_routine_v1: localStorage.getItem('genba_routine_v1'),
-    genba_mode_v1: localStorage.getItem('genba_mode_v1'),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
   const url = URL.createObjectURL(blob);
@@ -4202,24 +4354,19 @@ function importData(event) {
   reader.onload = function(e) {
     try {
       const data = JSON.parse(e.target.result);
-      if (data.productId && data.productId !== PRODUCT_ID) throw new Error('product mismatch');
-      let importMemos = data.memos;
-      if (!Array.isArray(importMemos) && typeof data.genba_memos_v1 === 'string') {
-        importMemos = JSON.parse(data.genba_memos_v1 || '[]');
-      }
-      if (!Array.isArray(importMemos)) throw new Error('memo list missing');
-      const normalized = dedupeMemos(normalizeMemoList(importMemos, 'import'));
-      if (importMemos.length && !normalized.length) throw new Error('no valid memos');
-      saveMemos(normalized);
-      if (data.genba_memos_v1 !== undefined) localStorage.setItem('genba_memos_v1', data.genba_memos_v1);
-      if (data.genba_routine_v1 !== undefined) localStorage.setItem('genba_routine_v1', data.genba_routine_v1 || '');
-      if (data.genba_mode_v1 !== undefined) localStorage.setItem('genba_mode_v1', data.genba_mode_v1 || 'genba');
+      const validated = validateBackupPayload(data);
+      applyValidatedBackup(validated);
       renderMorning();
       renderHistory();
+      renderTask();
+      renderLog();
       applyMode();
-      itteShowToast('復元しました');
+      itteShowToast(validated.kind === 'current' ? '全データを復元しました' : '旧バックアップを移行して復元しました');
     } catch(err) {
-      itteShowToast('ファイルが正しくありません');
+      const reason = err && err.message === 'unsupported schema version'
+        ? '未対応のバックアップversionです'
+        : 'ファイルを検証できませんでした';
+      itteShowToast(`${reason}。データは変更されていません`);
     }
     event.target.value = '';
   };
@@ -4227,7 +4374,6 @@ function importData(event) {
 }
 
 /* ─── ONBOARDING ─── */
-const ONBOARDING_KEY = 'genba_onboarding_seen_v1';
 
 function checkOnboarding() {
   if (!localStorage.getItem(ONBOARDING_KEY)) {
@@ -4439,7 +4585,6 @@ function toDateStr(d) {
 }
 
 /* ─── MODE ─── */
-const MODE_KEY = 'genba_mode_v1';
 
 const MODES = {
   genba: {
@@ -4609,7 +4754,6 @@ function applyMode() {
 }
 
 /* ─── ROUTINE ─── */
-const ROUTINE_KEY = 'genba_routine_v1';
 const ROUTINE_DEFAULT = `1. トイレ掃除・水撒き
 2. コーヒー
 3. ストレッチ
@@ -4711,11 +4855,6 @@ checkOnboarding();
 // ─────────────────────────────
 //  STATE
 // ─────────────────────────────
-const STORAGE_TASK    = 'itte_task';
-const STORAGE_DONE    = 'itte_done';
-const STORAGE_LOG     = 'itte_log';
-const STORAGE_DATE    = 'itte_date';
-
 let timerInterval = null;
 let timerSeconds  = 30 * 60;
 let timerRunning  = false;

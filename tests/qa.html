@@ -1,0 +1,83 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>P02 QA</title><body><h1>P02 A-01〜A-06 QA</h1><pre id="out">RUNNING</pre><iframe id="app" hidden></iframe><script>
+if (!['127.0.0.1', 'localhost'].includes(location.hostname)) throw new Error('QA runner is localhost only');
+const out = document.getElementById('out');
+const app = document.getElementById('app');
+const results = [];
+const keys = {
+  memos: 'daimon_ittebako_memos_v2', state: 'daimon_ittebako_storage_migrated_v3',
+  task: 'daimon_ittebako_night_task_v1', mode: 'daimon_ittebako_mode_v1'
+};
+const loadApp = entries => new Promise(resolve => {
+  localStorage.clear();
+  Object.entries(entries || {}).forEach(([k,v]) => localStorage.setItem(k,v));
+  app.onload = () => resolve(app.contentWindow);
+  app.src = `../index.html?qa=${Date.now()}#drop`;
+});
+const add = (name, ok, detail='') => results.push({name, ok:Boolean(ok), detail});
+const memos = () => JSON.parse(localStorage.getItem(keys.memos) || '[]');
+
+(async () => {
+  const siblingCache = await caches.open('sibling-product-v1');
+  await siblingCache.put('/sibling-proof', new Response('KEEP'));
+  let w = await loadApp();
+  add('01 new user', Array.isArray(memos()) && memos().length === 0);
+
+  w.saveMemos([{id:'now-1',body:'現行保存',category:'hirameki',created_at:'2026-08-18T00:00:00Z'}]);
+  await new Promise(r => { app.onload=r; app.src = `../index.html?qa=${Date.now()}#drop`; });
+  add('02 current save reload', memos().length === 1 && memos()[0].body === '現行保存');
+
+  w = await loadApp({genba_memos_v1:JSON.stringify([{id:'old-1',main:'旧一手',createdAt:'2026-08-18T00:00:00Z'}])});
+  add('03 legacy single migration', memos().length === 1 && memos()[0].category === 'tomorrow');
+
+  w = await loadApp();
+  const legacy = {genba_memos_v1:JSON.stringify([{id:'backup-1',main:'旧backup'}]),genba_mode_v1:'work'};
+  w.applyValidatedBackup(w.validateBackupPayload(legacy));
+  add('04 legacy backup import', memos().length === 1 && memos()[0].category === 'tomorrow');
+
+  w = await loadApp({hirameki_memos_v1:JSON.stringify([{id:'same',text:'A'}]),genba_memos_v1:JSON.stringify([{id:'same',main:'B'}])});
+  add('05 same ID mixed', memos().length === 2 && new Set(memos().map(x=>x.id)).size === 2);
+
+  w = await loadApp();
+  const payload = w.createFullExportPayload();
+  payload.memos = [{id:'repeat',body:'一度だけ',category:'hirameki',created_at:'2026-08-18T00:00:00Z'}];
+  w.applyValidatedBackup(w.validateBackupPayload(payload));
+  w.applyValidatedBackup(w.validateBackupPayload(payload));
+  add('06 repeated import idempotent', memos().length === 1);
+
+  const beforeInvalid = JSON.stringify(memos());
+  let invalidRejected=false; try { JSON.parse('{broken'); } catch(e) { invalidRejected=true; }
+  add('07 invalid JSON rejected', invalidRejected && JSON.stringify(memos()) === beforeInvalid);
+
+  let unknownRejected=false; try { w.validateBackupPayload({...payload,schemaVersion:999}); } catch(e) { unknownRejected=e.message==='unsupported schema version'; }
+  add('08 unknown schema rejected', unknownRejected && JSON.stringify(memos()) === beforeInvalid);
+
+  localStorage.setItem('sibling_product_data','KEEP');
+  w.applyValidatedBackup(w.validateBackupPayload(payload));
+  add('09 sibling storage kept', localStorage.getItem('sibling_product_data') === 'KEEP');
+
+  w = await loadApp({itte_task:'OLD',genba_mode_v1:'work'});
+  add('10 auxiliary namespace', localStorage.getItem(keys.task)==='OLD' && localStorage.getItem(keys.mode)==='work' && localStorage.getItem('itte_task')==='OLD');
+
+  w = await loadApp();
+  localStorage.setItem(keys.task,'夜の一手'); localStorage.setItem(keys.mode,'work');
+  w.saveMemos([{id:'rt',body:'往復',category:'tomorrow',created_at:'2026-08-18T00:00:00Z'}]);
+  const roundtrip = w.createFullExportPayload();
+  localStorage.removeItem(keys.task); localStorage.removeItem(keys.mode); localStorage.setItem(keys.memos,'[]');
+  w.applyValidatedBackup(w.validateBackupPayload(roundtrip));
+  add('11 full backup roundtrip', memos()[0]?.body==='往復' && localStorage.getItem(keys.task)==='夜の一手' && localStorage.getItem(keys.mode)==='work');
+
+  add('12 personal marker absent', !w.document.documentElement.innerHTML.match(/鉄兵専用|中山鉄兵/));
+  const legal = ['privacy','terms','sales','support'];
+  const statuses = await Promise.all(legal.map(x=>fetch(`../legal/${x}.html`).then(r=>r.status)));
+  add('13 legal routes', statuses.every(x=>x===200), statuses.join(','));
+
+  const cacheText = await fetch('../sw.js').then(r=>r.text());
+  await navigator.serviceWorker.ready; await new Promise(r=>setTimeout(r,500));
+  const cacheNames = await caches.keys();
+  add('14 SW cache boundary', cacheText.includes('key.startsWith(CACHE_PREFIX)') && cacheNames.includes('sibling-product-v1'), cacheNames.join(','));
+  add('15 full backup metadata', roundtrip.productId==='daimon-ittebako' && roundtrip.schemaVersion===3 && Boolean(roundtrip.createdAt));
+
+  out.textContent = JSON.stringify({pass:results.filter(x=>x.ok).length,total:results.length,results},null,2);
+  document.title = results.every(x=>x.ok) ? 'P02 QA PASS' : 'P02 QA FAIL';
+})().catch(error => { out.textContent=error.stack; document.title='P02 QA ERROR'; });
+</script></body></html>
