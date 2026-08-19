@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'daimon-ittebako-';
-const CACHE_NAME = `${CACHE_PREFIX}v10`;
+const CACHE_NAME = `${CACHE_PREFIX}v11`;
 const FILES_TO_CACHE = [
   './',
   './index.html',
