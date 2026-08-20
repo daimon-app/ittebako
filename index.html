@@ -2694,15 +2694,23 @@ function firstString(...values) {
   return '';
 }
 
+// Imported/migrated memo ids are interpolated into inline onclick="...('${m.id}')"
+// attributes at render time, so every id that reaches storage must be restricted
+// to a charset that cannot break out of an attribute or a JS string literal.
+const SAFE_ID_RE = /[^A-Za-z0-9_.:-]/g;
+function sanitizeId(raw) {
+  return String(raw ?? '').replace(SAFE_ID_RE, '').slice(0, 200);
+}
+
 function normalizeMemo(memo, index = 0, sourceKey = STORAGE_KEY) {
   if (!isPlainObject(memo)) return null;
   const body = firstString(memo.body, memo.text, memo.main, memo.site, memo.first);
   if (!body) return null;
   const createdAt = firstString(memo.created_at, memo.createdAt) || new Date().toISOString();
-  const legacyId = `legacy-${sourceKey}-${index}-${createdAt}`;
+  const legacyId = sanitizeId(`legacy-${sourceKey}-${index}-${createdAt}`) || `legacy-${sourceKey}-${index}-${Date.now()}`;
   return {
     ...memo,
-    id: firstString(String(memo.id ?? '')) || legacyId,
+    id: sanitizeId(memo.id) || legacyId,
     body,
     category: firstString(memo.category) || (sourceKey === 'genba_memos_v1' ? 'tomorrow' : 'hirameki'),
     source: firstString(memo.source) || `legacy:${sourceKey}`,

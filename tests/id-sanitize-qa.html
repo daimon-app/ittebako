@@ -1,0 +1,113 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>P02 id sanitize QA</title><body><h1>P02 imported/migrated id sanitization QA</h1><pre id="out">RUNNING</pre><iframe id="app" hidden></iframe><script>
+if (!['127.0.0.1', 'localhost'].includes(location.hostname)) throw new Error('QA runner is localhost only');
+const out = document.getElementById('out');
+const app = document.getElementById('app');
+const results = [];
+const memoKey = 'daimon_ittebako_memos_v2';
+const SAFE_ID = /^[A-Za-z0-9_.:-]+$/;
+const DANGEROUS = ["'", '"', '<', '>', '`'];
+
+const loadApp = entries => new Promise(resolve => {
+  localStorage.clear();
+  Object.entries(entries || {}).forEach(([k, v]) => localStorage.setItem(k, v));
+  app.onload = () => resolve(app.contentWindow);
+  app.src = `../index.html?idQa=${Date.now()}#drop`;
+});
+const add = (name, ok, detail = '') => results.push({ name, ok: Boolean(ok), detail });
+const memos = () => JSON.parse(localStorage.getItem(memoKey) || '[]');
+const isSafe = id => typeof id === 'string' && id.length > 0 && SAFE_ID.test(id);
+const containsDangerous = text => DANGEROUS.some(ch => text.includes(ch));
+
+(async () => {
+  // 01-03: hostile ids saved through the normal write path (dropSave/saveMemo/itteSaveMemos
+  // all funnel through saveMemos -> normalizeMemoList -> normalizeMemo).
+  let w = await loadApp();
+  const hostileIds = {
+    quote: `q'--onclick='alert(1)`,
+    angle: `<img src=x onerror=alert(1)>`,
+    script: `"></textarea><script>alert(1)<` + `/script>`,
+  };
+  w.saveMemos(Object.entries(hostileIds).map(([k, id]) => ({
+    id, body: `body-${k}`, category: 'hirameki', created_at: '2026-08-18T00:00:00.000Z',
+  })));
+  const savedDirect = memos();
+  add('01 quote id sanitized on direct save', isSafe(savedDirect.find(m => m.body === 'body-quote')?.id));
+  add('02 angle-bracket id sanitized on direct save', isSafe(savedDirect.find(m => m.body === 'body-angle')?.id));
+  add('03 script-like id sanitized on direct save', isSafe(savedDirect.find(m => m.body === 'body-script')?.id));
+
+  // 04: legacy single-key migration (migrateLegacyStorage runs at app load).
+  w = await loadApp({ genba_memos_v1: JSON.stringify([{ id: `<script>alert(1)<` + `/script>`, main: '旧一手' }]) });
+  add('04 migrated legacy id sanitized', isSafe(memos()[0]?.id), memos()[0]?.id);
+
+  // 05: legacy backup import via validateBackupPayload/applyValidatedBackup.
+  w = await loadApp();
+  const legacyBackup = { genba_memos_v1: JSON.stringify([{ id: `x"onmouseover="alert(1)`, main: '旧backup' }]) };
+  w.applyValidatedBackup(w.validateBackupPayload(legacyBackup));
+  add('05 imported legacy backup id sanitized', isSafe(memos()[0]?.id), memos()[0]?.id);
+
+  // 06: current schema-v3 backup import with a hostile id.
+  w = await loadApp();
+  const base = w.createFullExportPayload();
+  const v3Payload = { ...base, memos: [{ id: `y'});alert(1);({x:'`, body: 'v3輸入', category: 'hirameki', created_at: '2026-08-18T00:00:00.000Z' }] };
+  w.applyValidatedBackup(w.validateBackupPayload(v3Payload));
+  add('06 imported v3 backup id sanitized', isSafe(memos()[0]?.id), memos()[0]?.id);
+
+  // 07: fallback id (memo.id absent, createdAt hostile) must also be sanitized -
+  // legacyId is built from createdAt, which is attacker-controlled too.
+  w = await loadApp();
+  const hostileCreatedAt = { genba_memos_v1: JSON.stringify([{ main: 'no id', createdAt: `'><script>alert(1)<` + `/script>` }]) };
+  w.applyValidatedBackup(w.validateBackupPayload(hostileCreatedAt));
+  add('07 fallback legacyId sanitized when createdAt is hostile', isSafe(memos()[0]?.id), memos()[0]?.id);
+
+  // 08: repeated import of the identical hostile payload stays idempotent (dedupe intact).
+  w = await loadApp();
+  w.applyValidatedBackup(w.validateBackupPayload(v3Payload));
+  w.applyValidatedBackup(w.validateBackupPayload(v3Payload));
+  add('08 repeated hostile import idempotent', memos().length === 1);
+
+  // 09: two distinct hostile ids that sanitize to the same string still dedupe-collide
+  // safely (both kept, second gets a deterministic safe suffix) rather than colliding silently.
+  w = await loadApp();
+  w.saveMemos([
+    { id: `x'''`, body: 'A', category: 'hirameki', created_at: '2026-08-18T00:00:00.000Z' },
+    { id: `x<<<`, body: 'B', category: 'hirameki', created_at: '2026-08-18T00:00:01.000Z' },
+  ]);
+  const collided = memos();
+  add('09 post-sanitize collisions still deduped safely',
+    collided.length === 2 && new Set(collided.map(m => m.id)).size === 2 && collided.every(m => isSafe(m.id)),
+    JSON.stringify(collided.map(m => m.id)));
+
+  // 10: sanitizeId is a pure, deterministic function (same hostile input -> same safe output).
+  w = await loadApp();
+  const probe = `a'b"c<d>e\`f`;
+  const r1 = w.sanitizeId(probe);
+  const r2 = w.sanitizeId(probe);
+  add('10 sanitizeId deterministic', r1 === r2 && r1 === 'abcdef', r1);
+
+  // 11: rendered onclick attribute for a hostile-id shopping item carries only a safe id,
+  // and the item count is unaffected (no extra DOM nodes injected by attribute breakout).
+  w = await loadApp();
+  w.saveMemos([{ id: `z'onclick='alert(1)`, body: '買う物', category: 'shopping', created_at: '2026-08-18T00:00:00.000Z' }]);
+  w.renderShopping();
+  const shoppingHtml = w.document.getElementById('shopping-list').innerHTML;
+  const rowCount = (shoppingHtml.match(/class="item-row"/g) || []).length;
+  const shoppingOnclick = shoppingHtml.match(/onclick="checkItem\('([^']*)'\)"/);
+  add('11 rendered shopping onclick id is safe and single row',
+    rowCount === 1 && Boolean(shoppingOnclick) && isSafe(shoppingOnclick[1]),
+    shoppingHtml);
+
+  // 12: rendered onclick attribute for a hostile-id storage item is likewise inert.
+  w = await loadApp();
+  w.saveMemos([{ id: `w"><img src=x onerror=alert(1)>`, body: '保管', category: 'hirameki', created_at: '2026-08-18T00:00:00.000Z' }]);
+  w.renderStorage();
+  const storageHtml = w.document.getElementById('storage-sections').innerHTML;
+  const itemCount = (storageHtml.match(/class="storage-item(?:"|\s)/g) || []).length;
+  const storageOnclick = storageHtml.match(/onclick="toggleStorageSelect\('([^']*)'\)"/);
+  add('12 rendered storage onclick id is safe and single item',
+    itemCount === 1 && Boolean(storageOnclick) && isSafe(storageOnclick[1]),
+    storageHtml);
+
+  out.textContent = JSON.stringify({ pass: results.filter(x => x.ok).length, total: results.length, results }, null, 2);
+  document.title = results.every(x => x.ok) ? 'P02 id sanitize QA PASS' : 'P02 id sanitize QA FAIL';
+})().catch(error => { out.textContent = error.stack; document.title = 'P02 id sanitize QA ERROR'; });
+</script></body></html>

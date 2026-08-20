@@ -52,3 +52,7 @@ Device batch must verify launch, offline first launch, restart persistence, back
 
 No release-ready or signed claim may be made until the build and device evidence exist.
 
+## Security note (2026-08-20)
+
+`index.html` (the same asset copied into the APK/AAB, PASS above) had a P0 fix for unsafe imported/migrated memo id interpolation into inline `onclick` attributes (attribute breakout / JS injection via a crafted backup file or legacy `localStorage` value). Fixed at the single normalization choke point (`normalizeMemo`/`sanitizeId` in `index.html`) that all load/import/migration paths already funnel through; no Android-specific code changed. See `docs/A01_A06_DECISION_LOG.md` (2026-08-20 entry) and `tests/id-sanitize-qa.html` (12/12 PASS) for details.
+
