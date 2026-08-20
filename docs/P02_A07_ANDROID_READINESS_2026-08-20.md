@@ -17,7 +17,9 @@ Branch: `product/p02-sales-ready`
 | storage | WebView DOM storage; Android cloud backup disabled | PASS (design), device UNVERIFIED |
 | import | Android system file chooser connected to HTML file input | PASS (code), device UNVERIFIED |
 | icon | existing `icon-512.png` copied into generated Android resources | PASS (configuration) |
-| release signing | no key or secret committed | READY FOR OWNER KEY / UNVERIFIED |
+| release build | Gradle 8.9 / JDK 17 / Android SDK 35 | PASS (unsigned release bundle) |
+| AAB | `android/app/build/outputs/bundle/release/app-release.aab` | PASS (generated, unsigned) |
+| release signing | no key or secret committed | OWNER KEY REQUIRED / UNVERIFIED |
 
 ## Build commands
 
@@ -28,7 +30,14 @@ cd android
 gradle clean bundleRelease
 ```
 
-Expected unsigned release artifact:
+Generated unsigned release artifact (2026-08-20):
+
+- path: `android/app/build/outputs/bundle/release/app-release.aab`
+- size: `61,109 bytes`
+- SHA-256: `DB900FEB0733FEDA205DB171D4DF52D77E38291E06F29985CA9F51F3A43CCD01`
+- command: `gradle clean bundleRelease`
+- result: `BUILD SUCCESSFUL` (43 tasks)
+- signature inspection: unsigned (production signing remains unverified)
 
 `android/app/build/outputs/bundle/release/app-release.aab`
 
@@ -45,14 +54,14 @@ Device batch must verify launch, offline first launch, restart persistence, back
 ## Current verdict
 
 - Static Android configuration: `PASS`
-- Release build: `UNVERIFIED` (JDK/SDK/Gradle unavailable in current environment)
-- AAB generation: `UNVERIFIED`
+- Release build: `PASS` (unsigned bundle, actual build)
+- AAB generation: `PASS` (hash and size recorded above)
+- Production signing: `OWNER_PHYSICAL_ACTION_REQUIRED / UNVERIFIED`
 - Signing: `OWNER_PHYSICAL_ACTION_REQUIRED` only when a production key is created/selected
 - Android device QA: `OWNER_PHYSICAL_ACTION_REQUIRED / UNVERIFIED`
 
-No release-ready or signed claim may be made until the build and device evidence exist.
+No signed-release or device-PASS claim may be made until production signing and device evidence exist.
 
 ## Security note (2026-08-20)
 
 `index.html` (the same asset copied into the APK/AAB, PASS above) had a P0 fix for unsafe imported/migrated memo id interpolation into inline `onclick` attributes (attribute breakout / JS injection via a crafted backup file or legacy `localStorage` value). Fixed at the single normalization choke point (`normalizeMemo`/`sanitizeId` in `index.html`) that all load/import/migration paths already funnel through; no Android-specific code changed. See `docs/A01_A06_DECISION_LOG.md` (2026-08-20 entry) and `tests/id-sanitize-qa.html` (12/12 PASS) for details.
-

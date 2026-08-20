@@ -150,4 +150,4 @@ Owner valuesを一括確定 → legal / purchase confirmationへ実値反映 →
 
 Android最小プロジェクト、applicationId `jp.daimon.ittebako`、version、SDK、最小権限、PWA同梱offline設計、file import chooser、既存icon連携を `android/` に追加した。静的readiness testはPASS。Play Store copy/graphic specificationと6/15/30/60秒CM packageも追加した。
 
-ただし現在環境にはJDK、Android SDK、Gradleがなく、release build、AAB生成、端末挙動、backup file download、production signingは未実測である。これらを `PASS` や `release ready` と扱わない。詳細は `P02_A07_ANDROID_READINESS_2026-08-20.md` を正本とする。
+2026-08-20にJDK 17、Android SDK 35、Gradle 8.9で実際に `clean bundleRelease` を実行し、unsigned AAB生成をPASSした。端末挙動、backup file download、production signingは未実測であり、PASS扱いしない。hashを含む詳細は `P02_A07_ANDROID_READINESS_2026-08-20.md` を正本とする。
