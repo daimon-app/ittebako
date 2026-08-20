@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'jp.daimon.ittebako'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'jp.daimon.ittebako'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0-beta.1'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            debuggable false
+        }
+    }
+
+    sourceSets {
+        main.assets.srcDir layout.buildDirectory.dir('generated/webAssets')
+        main.res.srcDir layout.buildDirectory.dir('generated/iconRes')
+    }
+}
+
+def webRoot = rootProject.projectDir.parentFile
+
+tasks.register('syncWebAssets', Copy) {
+    from(webRoot) {
+        include 'index.html', 'manifest.json', 'sw.js'
+        include 'icon-192.png', 'icon-512.png'
+        include 'legal/**', 'sales/**'
+    }
+    into layout.buildDirectory.dir('generated/webAssets/web')
+}
+
+tasks.register('syncLauncherIcon', Copy) {
+    from(new File(webRoot, 'icon-512.png'))
+    into layout.buildDirectory.dir('generated/iconRes/drawable')
+    rename { 'app_icon.png' }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn 'syncWebAssets', 'syncLauncherIcon'
+}
+
